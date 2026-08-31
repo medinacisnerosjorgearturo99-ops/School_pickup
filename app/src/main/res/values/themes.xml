@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.RecogeYa" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/recoge_bg</item>
+        <item name="android:navigationBarColor">@color/recoge_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@color/recoge_bg</item>
+    </style>
+</resources>
