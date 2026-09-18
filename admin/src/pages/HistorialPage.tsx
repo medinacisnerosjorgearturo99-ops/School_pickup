@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Card } from "../components/ui/Card"
+import { apiUrl } from "../lib/api"
 
 interface PickupEvent {
   id: string
@@ -37,7 +38,7 @@ export function HistorialPage() {
     let cancelled = false
     async function load() {
       try {
-        const response = await fetch("/api/pickups/history")
+        const response = await fetch(apiUrl("/api/pickups/history"))
         if (!response.ok) throw new Error("No se pudo leer el historial.")
         const body = (await response.json()) as { events?: PickupEvent[] }
         if (!cancelled) {
@@ -45,7 +46,7 @@ export function HistorialPage() {
           setError("")
         }
       } catch {
-        if (!cancelled) setError("Enciende el servidor local (:8080) para ver las entregas reales.")
+        if (!cancelled) setError("No hay conexión con el servidor. En local enciende :8080; en web configura VITE_API_URL.")
       }
     }
     void load()

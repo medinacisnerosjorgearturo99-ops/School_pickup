@@ -1,5 +1,6 @@
 import { teacherName } from "./format"
 import { studentInitials } from "./students"
+import { apiUrl } from "./api"
 import type { ClassroomScreen, GradeGroup, SchoolState } from "../types/school"
 
 export function pairingCodeFor(classroom: string) {
@@ -138,7 +139,7 @@ export function buildSchoolSync(school: SchoolState, cycleId: string): SchoolSyn
 }
 
 export async function publishSchoolSync(payload: SchoolSyncPayload) {
-  const response = await fetch("/api/school/sync", {
+  const response = await fetch(apiUrl("/api/school/sync"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -148,7 +149,7 @@ export async function publishSchoolSync(payload: SchoolSyncPayload) {
 
 export async function fetchAdminSchool(): Promise<SchoolState | null> {
   try {
-    const response = await fetch("/api/school/admin")
+    const response = await fetch(apiUrl("/api/school/admin"))
     if (response.status === 204 || !response.ok) return null
     const data = (await response.json()) as SchoolState
     if (!data || typeof data.schoolName !== "string") return null
@@ -159,7 +160,7 @@ export async function fetchAdminSchool(): Promise<SchoolState | null> {
 }
 
 export async function persistAdminSchool(school: SchoolState) {
-  const response = await fetch("/api/school/admin", {
+  const response = await fetch(apiUrl("/api/school/admin"), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(school),
