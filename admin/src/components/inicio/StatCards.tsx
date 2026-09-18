@@ -35,9 +35,9 @@ export function StatCards() {
       iconClass: "bg-app-purple-soft text-app-purple",
     },
     {
-      label: "Pantallas activas",
+      label: "Pantallas vinculadas",
       value: stats.screensOnline,
-      hint: stats.screensOnline === stats.screens ? "En funcionamiento" : `${stats.screensOnline} de ${stats.screens} en línea`,
+      hint: stats.screens === 0 ? "Sin pantallas" : `${stats.screensOnline} de ${stats.screens} con grupo`,
       icon: Monitor,
       iconClass: "bg-app-orange-soft text-app-orange",
     },

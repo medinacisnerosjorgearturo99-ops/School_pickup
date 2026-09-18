@@ -42,8 +42,6 @@ import { Modal } from "../components/ui/Modal"
 import { ThemeToggle } from "../components/ui/ThemeToggle"
 
 const PAGE_SIZE = 8
-const PREFERRED_ID = "lucas"
-const PREFERRED_GRADE = "2º Primaria"
 
 type StatusFilter = "todos" | AcademicStatus
 type DetailTab = "info" | "academico" | "asistencia" | "salud" | "documentos" | "historial"
@@ -60,13 +58,13 @@ const tabs: { id: DetailTab; label: string }[] = [
 export function AlumnosPage() {
   const { school, cycleId, saveStudent, deleteStudent, importStudents } = useSchool()
   const [query, setQuery] = useState("")
-  const [gradeFilter, setGradeFilter] = useState<string>("preferred")
+  const [gradeFilter, setGradeFilter] = useState<string>("todos")
   const [groupFilter, setGroupFilter] = useState("todos")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("activo")
   const [birthdayOnly, setBirthdayOnly] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const [studentId, setStudentId] = useState<string | null>(PREFERRED_ID)
+  const [studentId, setStudentId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [tab, setTab] = useState<DetailTab>("info")
   const [formStudent, setFormStudent] = useState<Student | null | undefined>(undefined)
@@ -84,8 +82,7 @@ export function AlumnosPage() {
     () => school.grades.filter((grade) => grade.cycleId === cycleId).sort((a, b) => a.order - b.order),
     [cycleId, school.grades],
   )
-  const preferredGradeId = cycleGrades.find((grade) => grade.name === PREFERRED_GRADE)?.id ?? "todos"
-  const effectiveGrade = gradeFilter === "preferred" ? preferredGradeId : gradeFilter
+  const effectiveGrade = gradeFilter
 
   const cycleStudents = useMemo(
     () => school.students.filter((student) => student.cycleId === cycleId),
@@ -116,8 +113,6 @@ export function AlumnosPage() {
         if (grade !== 0) return grade
         const letter = (groupA?.letter ?? "").localeCompare(groupB?.letter ?? "")
         if (letter !== 0) return letter
-        if (a.id === PREFERRED_ID) return -1
-        if (b.id === PREFERRED_ID) return 1
         return studentFullName(a).localeCompare(studentFullName(b), "es")
       })
   }, [birthdayOnly, cycleStudents, effectiveGrade, groupById, groupFilter, guardianById, query, statusFilter])
@@ -130,7 +125,6 @@ export function AlumnosPage() {
 
   const selected =
     cycleStudents.find((student) => student.id === studentId) ??
-    cycleStudents.find((student) => student.id === PREFERRED_ID) ??
     filtered[0] ??
     cycleStudents[0]
 
@@ -197,8 +191,15 @@ export function AlumnosPage() {
     return (
       <div className="mx-auto max-w-[1500px]">
         <h1 className="text-[28px] font-extrabold">Alumnos</h1>
-        <p className="mt-2 text-sm text-app-muted">Aún no hay alumnos en este ciclo.</p>
-        <button type="button" onClick={() => setFormStudent(null)} className="mt-4 rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white">
+        <p className="mt-2 text-sm text-app-muted">
+          {cycleId ? "Aún no hay alumnos en este ciclo." : "Crea un ciclo y un grupo antes de dar de alta alumnos."}
+        </p>
+        <button
+          type="button"
+          disabled={!cycleId}
+          onClick={() => setFormStudent(null)}
+          className="mt-4 rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+        >
           + Nuevo alumno
         </button>
         {formStudent !== undefined ? (
@@ -478,7 +479,6 @@ export function AlumnosPage() {
           onTab={setTab}
           onEdit={() => setFormStudent(selected)}
           onDelete={() => setConfirmDelete(true)}
-          onGreet={() => notice(`Se envió una felicitación a los responsables de ${studentFullName(selected)}.`)}
           onCalendar={() => setCalendarOpen(true)}
         />
       </div>
@@ -526,7 +526,6 @@ function DetailPanel({
   onTab,
   onEdit,
   onDelete,
-  onGreet,
   onCalendar,
 }: {
   student: Student
@@ -536,7 +535,6 @@ function DetailPanel({
   onTab: (tab: DetailTab) => void
   onEdit: () => void
   onDelete: () => void
-  onGreet: () => void
   onCalendar: () => void
 }) {
   const badge = academicBadge(student.status)
@@ -555,7 +553,6 @@ function DetailPanel({
             ariaLabel="Más acciones"
             items={[
               { id: "edit", label: "Editar ficha", onClick: onEdit },
-              { id: "greet", label: "Enviar felicitación", onClick: onGreet },
               { id: "delete", label: "Eliminar", danger: true, onClick: onDelete },
             ]}
           />
@@ -633,6 +630,11 @@ function DetailPanel({
                       <p className="flex items-center gap-1 text-xs text-app-muted">
                         <Mail size={12} /> {guardian.email}
                       </p>
+                      {guardian.password ? (
+                        <p className="mt-1 font-mono text-xs font-semibold text-app-secondary">
+                          Contraseña app: {guardian.password}
+                        </p>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -656,9 +658,6 @@ function DetailPanel({
                   <p className="text-sm">{formatDayMonth(student.birthDate)}</p>
                   <p className="text-xs text-app-muted">{days === 0 ? "Hoy" : `Faltan ${days} días`}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" onClick={onGreet} className="rounded-xl bg-app-primary px-3 py-2 text-xs font-semibold text-white">
-                      Enviar felicitación
-                    </button>
                     <button type="button" onClick={onCalendar} className="rounded-xl border border-app-line px-3 py-2 text-xs font-semibold hover:bg-app-card-hover">
                       Ver calendario
                     </button>
@@ -683,6 +682,9 @@ function DetailPanel({
           <div>
             <p className="text-3xl font-extrabold">{student.attendancePct}%</p>
             <p className="text-xs text-app-muted">Promedio del ciclo</p>
+            {attendanceSeries(student.attendancePct).length === 0 ? (
+              <p className="mt-4 text-sm text-app-muted">Aún no hay asistencia mensual registrada.</p>
+            ) : (
             <ul className="mt-4 space-y-2">
               {attendanceSeries(student.attendancePct).map((item) => (
                 <li key={item.label}>
@@ -696,6 +698,7 @@ function DetailPanel({
                 </li>
               ))}
             </ul>
+            )}
           </div>
         ) : null}
         {tab === "salud" ? (
@@ -706,6 +709,9 @@ function DetailPanel({
           </dl>
         ) : null}
         {tab === "documentos" ? (
+          studentDocuments(student).length === 0 ? (
+            <p className="text-sm text-app-muted">Aún no hay documentos cargados.</p>
+          ) : (
           <ul className="space-y-2">
             {studentDocuments(student).map((doc) => (
               <li key={doc.id} className="flex items-center gap-3 rounded-xl border border-app-line px-3 py-2.5">
@@ -719,8 +725,12 @@ function DetailPanel({
               </li>
             ))}
           </ul>
+          )
         ) : null}
         {tab === "historial" ? (
+          pickupHistory(student).length === 0 ? (
+            <p className="text-sm text-app-muted">Aún no hay entregas registradas.</p>
+          ) : (
           <ul className="space-y-2">
             {pickupHistory(student).map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-app-line px-3 py-2.5">
@@ -734,6 +744,7 @@ function DetailPanel({
               </li>
             ))}
           </ul>
+          )
         ) : null}
       </div>
     </Card>

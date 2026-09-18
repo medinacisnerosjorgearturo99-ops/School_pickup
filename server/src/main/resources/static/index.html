@@ -139,13 +139,13 @@
     <div class="brand">
       <div class="logo">🎓</div>
       <div>
-        <h1>Colegio San Ignacio</h1>
+        <h1 id="school">Escuela</h1>
         <p>PANEL DE SALIDA • RECOGEYA</p>
       </div>
     </div>
     <div class="class-block">
-      <h2 id="grade">2º Primaria • Grupo A</h2>
-      <p id="teacher">Prof. Ana Martínez • Salón A-12</p>
+      <h2 id="grade">Sin grupo</h2>
+      <p id="teacher">Sin profesor • Sin salón</p>
     </div>
     <div class="clock-wrap">
       <div class="clock" id="clock">--:--</div>
@@ -178,7 +178,7 @@
       <div class="side-card">
         <h3>Resumen del grupo</h3>
         <div class="stats">
-          <div class="stat"><div class="n" id="total">26</div><div class="l">ALUMNOS</div></div>
+          <div class="stat"><div class="n" id="total">0</div><div class="l">ALUMNOS</div></div>
           <div class="stat"><div class="n" id="pending">0</div><div class="l">PENDIENTES</div></div>
           <div class="stat blue"><div class="n" id="now">0</div><div class="l">PREPARAR AHORA</div></div>
         </div>
@@ -202,7 +202,7 @@
       <div class="side-card">
         <div class="mini">
           <div class="ico">📍</div>
-          <div><div class="sub">Zona de entrega</div><div class="name" id="zone">Zona A</div></div>
+          <div><div class="sub">Zona de entrega</div><div class="name" id="zone">Sin zona</div></div>
         </div>
       </div>
       <div class="side-card">
@@ -234,6 +234,7 @@
     }
 
     function render(state) {
+      document.getElementById("school").textContent = state.classroom.school;
       document.getElementById("grade").textContent = state.classroom.grade;
       document.getElementById("teacher").textContent = state.classroom.teacher + " • " + state.classroom.classroom;
       document.getElementById("zone").textContent = state.classroom.zone;

@@ -9,7 +9,7 @@ import { AlumnosPage } from "./pages/AlumnosPage"
 import { ProfesoresPage } from "./pages/ProfesoresPage"
 import { ZonasPage } from "./pages/ZonasPage"
 import { PantallasPage } from "./pages/PantallasPage"
-import { ModulePlaceholder } from "./pages/ModulePlaceholder"
+import { HistorialPage } from "./pages/HistorialPage"
 
 export default function App() {
   return (
@@ -26,7 +26,7 @@ export default function App() {
               <Route path="zonas" element={<ZonasPage />} />
               <Route path="responsables" element={<Navigate to="/alumnos" replace />} />
               <Route path="pantallas" element={<PantallasPage />} />
-              <Route path="historial" element={<ModulePlaceholder />} />
+              <Route path="historial" element={<HistorialPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

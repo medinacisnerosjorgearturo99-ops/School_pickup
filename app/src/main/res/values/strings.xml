@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">RecogeYa</string>
+    <string name="location_notification_title">RecogeYa comparte tu ubicación</string>
+    <string name="location_notification_text">Se detiene al terminar o cancelar la recogida.</string>
 </resources>

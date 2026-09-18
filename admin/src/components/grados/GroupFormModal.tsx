@@ -41,16 +41,16 @@ export function GroupFormModal({
   function submit(event: FormEvent) {
     event.preventDefault()
     const cap = Number(capacity)
+    if (!gradeId) {
+      setError("Crea un grado antes de dar de alta grupos.")
+      return
+    }
     if (!letter.trim()) {
       setError("Indica la letra del grupo.")
       return
     }
     if (!Number.isFinite(cap) || cap < 1) {
       setError("La capacidad debe ser mayor a 0.")
-      return
-    }
-    if (!teacherId) {
-      setError("Asigna un profesor titular.")
       return
     }
     const result = onSave(
@@ -79,7 +79,11 @@ export function GroupFormModal({
               ariaLabel="Grado del grupo"
               value={gradeId}
               align="left"
-              options={grades.map((grade) => ({ value: grade.id, label: grade.name }))}
+              options={
+                grades.length === 0
+                  ? [{ value: "", label: "Crea un grado primero" }]
+                  : grades.map((grade) => ({ value: grade.id, label: grade.name }))
+              }
               onChange={setGradeId}
             />
           </div>
@@ -112,10 +116,13 @@ export function GroupFormModal({
               ariaLabel="Profesor titular"
               value={teacherId}
               align="left"
-              options={teachers.map((teacher) => ({
-                value: teacher.id,
-                label: teacherName(teacher.firstName, teacher.lastName),
-              }))}
+              options={[
+                { value: "", label: teachers.length === 0 ? "Sin profesores aún" : "Sin profesor titular" },
+                ...teachers.map((teacher) => ({
+                  value: teacher.id,
+                  label: teacherName(teacher.firstName, teacher.lastName),
+                })),
+              ]}
               onChange={setTeacherId}
             />
           </div>
@@ -127,7 +134,10 @@ export function GroupFormModal({
               ariaLabel="Zona de entrega"
               value={zoneId}
               align="left"
-              options={zones.map((zone) => ({ value: zone.id, label: zone.name }))}
+              options={[
+                { value: "", label: zones.length === 0 ? "Sin zonas aún" : "Sin zona" },
+                ...zones.map((zone) => ({ value: zone.id, label: zone.name })),
+              ]}
               onChange={setZoneId}
             />
           </div>

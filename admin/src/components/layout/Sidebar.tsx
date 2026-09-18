@@ -33,7 +33,10 @@ export function Sidebar({
               key={item.to}
               to={item.to}
               end={item.to === "/"}
-              onClick={onNavigate}
+              onClick={() => {
+                setMenuOpen(false)
+                onNavigate?.()
+              }}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition ${
                   isActive
@@ -51,7 +54,7 @@ export function Sidebar({
 
       <div className="relative border-t border-app-line p-3">
         {menuOpen ? (
-          <div className="absolute inset-x-3 bottom-full mb-2 overflow-hidden rounded-xl border border-app-line bg-app-card shadow-[var(--shadow)]">
+          <div className="absolute inset-x-3 bottom-full z-40 mb-2 overflow-hidden rounded-xl border border-app-line bg-app-card shadow-[var(--shadow)]">
             <button
               type="button"
               className="block w-full px-3.5 py-2.5 text-left text-sm font-medium text-app-text hover:bg-app-card-hover"
@@ -61,13 +64,6 @@ export function Sidebar({
               }}
             >
               {theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-            </button>
-            <button
-              type="button"
-              className="block w-full px-3.5 py-2.5 text-left text-sm font-medium text-app-muted hover:bg-app-card-hover"
-              onClick={() => setMenuOpen(false)}
-            >
-              Cerrar sesión (próximo)
             </button>
           </div>
         ) : null}

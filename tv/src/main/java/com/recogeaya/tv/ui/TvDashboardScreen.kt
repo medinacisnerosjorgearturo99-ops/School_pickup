@@ -28,15 +28,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,11 +55,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,6 +63,8 @@ import com.recogeaya.tv.TvViewModel
 import com.recogeaya.tv.sync.TvPickup
 import com.recogeaya.tv.sync.TvRosterStudent
 import com.recogeaya.tv.sync.TvScreenOption
+import com.recogeaya.tv.sync.arrivalLabel
+import com.recogeaya.tv.sync.hasArrived
 import com.recogeaya.tv.sync.isPrepareNow
 
 object TvColors {
@@ -96,7 +98,9 @@ fun TvDashboardScreen(
             screens = ui.screens,
             error = ui.pairingError,
             busy = ui.pairingBusy,
+            connected = ui.connected,
             onSelect = viewModel::pairWith,
+            onCode = viewModel::pairWithCode,
             modifier = modifier
         )
         return
@@ -131,6 +135,7 @@ fun TvDashboardScreen(
                     MainPanel(
                         prepare = prepare,
                         upcoming = upcoming,
+                        onAction = viewModel::setAction,
                         modifier = Modifier.weight(1.7f).fillMaxHeight()
                     )
                     Sidebar(
@@ -150,7 +155,7 @@ fun TvDashboardScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    MainPanel(prepare, upcoming, Modifier.fillMaxWidth())
+                    MainPanel(prepare, upcoming, viewModel::setAction, Modifier.fillMaxWidth())
                     Sidebar(
                         total = if (roster.isNotEmpty()) roster.size else classroom.totalStudents,
                         prepareCount = prepare.size,
@@ -222,6 +227,7 @@ private fun Header(
 private fun MainPanel(
     prepare: List<TvPickup>,
     upcoming: List<TvPickup>,
+    onAction: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -241,30 +247,18 @@ private fun MainPanel(
         }
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             prepare.forEach { student ->
-                PrepareRow(student)
+                PrepareRow(student, onAction)
             }
             Spacer(Modifier.height(18.dp))
             SectionLabel(Icons.Filled.AccessTime, "Próximos")
             upcoming.forEachIndexed { index, student ->
-                UpcomingRow(number = index + 4, student = student)
+                UpcomingRow(number = index + 1, student = student, onAction = onAction)
             }
             if (upcoming.isEmpty()) {
                 Text("No hay más alumnos en camino.", color = TvColors.Muted, fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF122036))
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Filled.Groups, null, tint = TvColors.Accent)
-            Spacer(Modifier.width(8.dp))
-            Text("Las recogidas de hermanos se coordinan automáticamente", color = TvColors.Accent, fontSize = 13.sp)
-        }
     }
 }
 
@@ -281,7 +275,7 @@ private fun RowScope.HeaderCell(text: String, weight: Float) {
 }
 
 @Composable
-private fun PrepareRow(student: TvPickup) {
+private fun PrepareRow(student: TvPickup, onAction: (String, String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -306,25 +300,35 @@ private fun PrepareRow(student: TvPickup) {
             Column {
                 Text(student.fullName, color = TvColors.Text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(student.gradeGroup, color = TvColors.Muted, fontSize = 12.sp)
+                if (student.verificationCode.isNotBlank()) {
+                    Text("Código ${student.verificationCode}", color = TvColors.Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
         Text(student.responsibleName, color = TvColors.Text, modifier = Modifier.weight(1f), fontSize = 14.sp)
         Box(modifier = Modifier.weight(0.9f), contentAlignment = Alignment.CenterStart) {
-            if (student.arrived) InfoPill("HA LLEGADO", TvColors.GreenSoft, TvColors.Green)
-            else InfoPill("A ${student.etaMinutes ?: "-"} MIN", TvColors.OrangeSoft, TvColors.Orange)
+            ArrivalPill(student)
         }
         Box(modifier = Modifier.weight(0.8f), contentAlignment = Alignment.CenterStart) {
             when (student.action) {
                 "LISTO" -> InfoPill("LISTA", TvColors.GreenSoft, TvColors.Green)
-                "PREPARANDO" -> InfoPill("PREPARANDO", TvColors.BlueSoft, TvColors.Accent)
-                else -> InfoPill("EN ESPERA", TvColors.Line, TvColors.Muted)
+                "PREPARANDO" -> Button(
+                    onClick = { onAction(student.childId, "LISTO") },
+                    colors = ButtonDefaults.buttonColors(containerColor = TvColors.Green, contentColor = Color.White),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Listo", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                else -> Button(
+                    onClick = { onAction(student.childId, "PREPARANDO") },
+                    colors = ButtonDefaults.buttonColors(containerColor = TvColors.Blue, contentColor = Color.White),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Preparar", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
             }
         }
     }
 }
 
 @Composable
-private fun UpcomingRow(number: Int, student: TvPickup) {
+private fun UpcomingRow(number: Int, student: TvPickup, onAction: (String, String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -344,8 +348,17 @@ private fun UpcomingRow(number: Int, student: TvPickup) {
         Column(modifier = Modifier.weight(1f)) {
             Text(student.fullName, color = TvColors.Text, fontWeight = FontWeight.Bold)
             Text("Responsable: ${student.responsibleName}", color = TvColors.Muted, fontSize = 12.sp)
+            if (student.verificationCode.isNotBlank()) {
+                Text("Código ${student.verificationCode}", color = TvColors.Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
         }
-        Text("⏱ ${student.etaMinutes ?: "-"} min", color = TvColors.Orange, fontWeight = FontWeight.Bold)
+        ArrivalPill(student)
+        Spacer(Modifier.width(10.dp))
+        Button(
+            onClick = { onAction(student.childId, "PREPARANDO") },
+            colors = ButtonDefaults.buttonColors(containerColor = TvColors.Blue, contentColor = Color.White),
+            shape = RoundedCornerShape(12.dp)
+        ) { Text("Preparar", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
     }
 }
 
@@ -511,39 +524,43 @@ private fun InfoPill(text: String, background: Color, foreground: Color) {
 }
 
 @Composable
+private fun ArrivalPill(student: TvPickup) {
+    val arrived = student.hasArrived()
+    InfoPill(
+        text = student.arrivalLabel(),
+        background = if (arrived) TvColors.GreenSoft else TvColors.OrangeSoft,
+        foreground = if (arrived) TvColors.Green else TvColors.Orange
+    )
+}
+
+@Composable
 private fun PairingOverlay(
     screens: List<TvScreenOption>,
     error: String?,
     busy: Boolean,
+    connected: Boolean,
     onSelect: (TvScreenOption) -> Unit,
+    onCode: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val enterFocus = remember { FocusRequester() }
     var selectedId by remember(screens) { mutableStateOf(screens.firstOrNull()?.id) }
+    var code by remember { mutableStateOf("") }
     val selected = screens.find { it.id == selectedId } ?: screens.firstOrNull()
 
-    LaunchedEffect(screens) {
+    LaunchedEffect(Unit) {
         runCatching { enterFocus.requestFocus() }
     }
 
     fun confirm() {
-        if (!busy && selected != null) onSelect(selected)
+        if (busy) return
+        if (code.isNotBlank()) onCode(code) else if (selected != null) onSelect(selected)
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(TvColors.Bg)
-            .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp &&
-                    (event.key == Key.Enter || event.key == Key.NumPadEnter || event.key == Key.DirectionCenter)
-                ) {
-                    confirm()
-                    true
-                } else {
-                    false
-                }
-            }
             .padding(32.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -569,13 +586,45 @@ private fun PairingOverlay(
                 Column {
                     Text("Elegir salón", color = TvColors.Text, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
                     Text(
-                        "Flechas para cambiar de grupo. Enter o el botón azul para entrar.",
+                        when {
+                            !connected && screens.isEmpty() -> "Sin conexión. Enciende el servidor en :8080 y sincroniza Dirección."
+                            screens.isEmpty() -> "Escribe el código de Dirección o espera a que aparezcan los salones."
+                            else -> "Usa el código de la pantalla o elige el grupo de esta TV."
+                        },
                         color = TvColors.Muted,
                         fontSize = 14.sp
                     )
                 }
             }
             Spacer(Modifier.height(18.dp))
+            OutlinedTextField(
+                value = code,
+                onValueChange = { code = it.uppercase() },
+                enabled = !busy,
+                singleLine = true,
+                label = { Text("Código de vinculación") },
+                placeholder = { Text("TV-A01") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(enterFocus),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Characters,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { if (code.isNotBlank()) onCode(code) }),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TvColors.Text,
+                    unfocusedTextColor = TvColors.Text,
+                    focusedBorderColor = TvColors.Accent,
+                    unfocusedBorderColor = TvColors.Line,
+                    focusedLabelColor = TvColors.Accent,
+                    unfocusedLabelColor = TvColors.Muted,
+                    cursorColor = TvColors.Accent,
+                    focusedPlaceholderColor = TvColors.Muted,
+                    unfocusedPlaceholderColor = TvColors.Muted
+                )
+            )
+            Spacer(Modifier.height(12.dp))
             if (error != null) {
                 Text(error, color = TvColors.Orange, fontSize = 13.sp)
                 Spacer(Modifier.height(10.dp))
@@ -583,7 +632,7 @@ private fun PairingOverlay(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 360.dp),
+                    .heightIn(max = 280.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(screens, key = { it.id }) { screen ->
@@ -616,15 +665,14 @@ private fun PairingOverlay(
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = { confirm() },
-                enabled = !busy && selected != null,
+                enabled = !busy && (code.isNotBlank() || selected != null),
                 colors = ButtonDefaults.buttonColors(containerColor = TvColors.Blue),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .focusRequester(enterFocus)
             ) {
                 Text(
-                    if (busy) "Entrando…" else "Entrar a ${selected?.groupLabel ?: "este salón"}",
+                    if (busy) "Entrando…" else if (code.isNotBlank()) "Vincular $code" else "Entrar a ${selected?.groupLabel ?: "este salón"}",
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 18.sp
                 )

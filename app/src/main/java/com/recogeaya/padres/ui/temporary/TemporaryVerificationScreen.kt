@@ -32,11 +32,9 @@ import androidx.compose.ui.unit.sp
 import com.recogeaya.padres.data.Child
 import com.recogeaya.padres.data.ResponsibleKind
 import com.recogeaya.padres.data.ResponsiblePerson
-import com.recogeaya.padres.data.SampleData
 import com.recogeaya.padres.ui.components.AppCard
 import com.recogeaya.padres.ui.components.BackLink
 import com.recogeaya.padres.ui.components.ChildAvatar
-import com.recogeaya.padres.ui.components.FakeQrCode
 import com.recogeaya.padres.ui.components.RecogeYaBottomScreen
 import com.recogeaya.padres.ui.components.SoftInitialsAvatar
 import com.recogeaya.padres.ui.theme.LocalAppDimens
@@ -73,7 +71,7 @@ fun TemporaryVerificationScreen(
             ) {
                 Icon(Icons.Filled.Share, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Compartir código o QR", fontWeight = FontWeight.Bold)
+                Text("Compartir código", fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(8.dp))
             Button(
@@ -158,7 +156,7 @@ fun TemporaryVerificationScreen(
         Spacer(Modifier.height(16.dp))
         Text("Verificación temporal", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Text(
-            "Esta persona no necesita la app. Pásale el código o el QR por mensaje, o muéstralo en la escuela.",
+            "Esta persona no necesita la app. Pásale el código por mensaje o muéstralo en la escuela.",
             color = RecogeYaColors.TextMuted,
             fontSize = 13.sp
         )
@@ -168,7 +166,7 @@ fun TemporaryVerificationScreen(
                 modifier = Modifier.padding(dimens.cardPad),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("CÓDIGO", color = RecogeYaColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Text(
                         code,
@@ -177,12 +175,8 @@ fun TemporaryVerificationScreen(
                         color = RecogeYaColors.Primary,
                         letterSpacing = 4.sp
                     )
-                    Text("Válido 15 min", color = RecogeYaColors.TextMuted, fontSize = 12.sp)
+                    Text("Válido para esta salida", color = RecogeYaColors.TextMuted, fontSize = 12.sp)
                 }
-                FakeQrCode(
-                    data = code,
-                    modifier = Modifier.size(110.dp)
-                )
             }
         }
 
@@ -191,7 +185,7 @@ fun TemporaryVerificationScreen(
             Icon(Icons.Filled.Info, null, tint = RecogeYaColors.TextMuted, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                "El código se actualiza automáticamente. Quien recoja solo tiene que mostrarlo.",
+                "El salón verá este código en la TV. Quien recoja solo tiene que mostrarlo.",
                 color = RecogeYaColors.TextMuted,
                 fontSize = 12.sp
             )
@@ -206,16 +200,16 @@ fun TemporaryVerificationScreen(
 private fun TemporaryPreview() {
     RecogeYaTheme {
         TemporaryVerificationScreen(
-            children = SampleData.children.filter { it.id == "daniela" },
+            children = emptyList(),
             responsible = ResponsiblePerson(
-                id = "patricia",
-                name = "Patricia Pérez",
-                initials = "PP",
-                relation = "Tía",
+                id = "",
+                name = "Responsable temporal",
+                initials = "RT",
+                relation = "Autorizado",
                 kind = ResponsibleKind.TEMPORARY
             ),
-            code = "6842",
-            shareMessage = "Código 6842",
+            code = "0000",
+            shareMessage = "Código 0000",
             onChangeResponsible = {},
             onContinueTracking = {},
             onDone = {},

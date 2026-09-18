@@ -60,6 +60,8 @@ export interface DeliveryZone {
   mapX: number
   mapY: number
   color: string
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface Teacher {
@@ -113,6 +115,7 @@ export interface Guardian {
   id: string
   name: string
   email: string
+  password: string
   phone: string
   relation: string
   kind: GuardianKind

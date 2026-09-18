@@ -48,7 +48,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import com.recogeaya.padres.data.SampleData
 import com.recogeaya.padres.ui.theme.LocalAppDimens
 import com.recogeaya.padres.ui.theme.RecogeYaColors
 import com.recogeaya.padres.ui.theme.RecogeYaTheme
@@ -161,17 +160,6 @@ fun LoginScreen(
                     "No hay registro en la app: la escuela da de alta tu correo y te manda la contraseña.",
                     color = RecogeYaColors.TextMuted,
                     fontSize = 12.sp,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "Prueba — misma contraseña para todos:\n" +
-                        "maria.gomez@gmail.com\n" +
-                        "jorge.gomez@gmail.com\n" +
-                        "Contraseña: ${SampleData.demoPassword}",
-                    color = RecogeYaColors.Primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
             }

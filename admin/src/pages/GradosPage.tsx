@@ -38,8 +38,6 @@ import { ThemeToggle } from "../components/ui/ThemeToggle"
 type StatusFilter = "todos" | AcademicStatus
 type DetailTab = "info" | "alumnos" | "profesores" | "horario"
 
-const PREFERRED_GRADE = "2º Primaria"
-const PREFERRED_LETTER = "A"
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie"]
 
 const statusFilters: { value: StatusFilter; label: string }[] = [
@@ -103,7 +101,6 @@ export function GradosPage() {
 
   const selectedGrade =
     summarized.find((grade) => grade.id === gradeId) ??
-    summarized.find((grade) => grade.name === PREFERRED_GRADE) ??
     summarized[0]
 
   const groupsOfGrade = useMemo(() => {
@@ -135,7 +132,6 @@ export function GradosPage() {
   const selectedGroup =
     filteredGroups.find((group) => group.id === groupId) ??
     groupsOfGrade.find((group) => group.id === groupId) ??
-    groupsOfGrade.find((group) => group.letter === PREFERRED_LETTER && selectedGrade?.name === PREFERRED_GRADE) ??
     filteredGroups[0] ??
     groupsOfGrade[0]
 
@@ -158,6 +154,10 @@ export function GradosPage() {
 
   function handleSaveGrade(draft: GradeDraft, id?: string) {
     const savedId = saveGrade(draft, id)
+    if (!savedId) {
+      setError("Crea un ciclo escolar antes de dar de alta grados.")
+      return
+    }
     setFormGrade(undefined)
     selectGrade(savedId)
     notice(id ? "Grado actualizado." : "Grado creado.")
@@ -221,11 +221,14 @@ export function GradosPage() {
     return (
       <div className="mx-auto max-w-[1500px]">
         <h1 className="text-[28px] font-extrabold">Grados y grupos</h1>
-        <p className="mt-2 text-sm text-app-muted">Aún no hay grados en este ciclo. Crea el primero para comenzar.</p>
+        <p className="mt-2 text-sm text-app-muted">
+          {cycleId ? "Aún no hay grados en este ciclo. Crea el primero para comenzar." : "Crea un ciclo escolar primero para poder dar de alta grados."}
+        </p>
         <button
           type="button"
+          disabled={!cycleId}
           onClick={() => setFormGrade(null)}
-          className="mt-4 rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white"
+          className="mt-4 rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
         >
           + Nuevo grado
         </button>

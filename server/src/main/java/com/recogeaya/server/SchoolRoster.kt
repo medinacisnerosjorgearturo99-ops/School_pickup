@@ -5,112 +5,87 @@ import kotlinx.coroutines.sync.withLock
 
 object SchoolRoster {
     private val mutex = Mutex()
-    private var schoolName: String = "Colegio San Ignacio"
+    private var schoolName: String = "Escuela"
     private var screens: List<ScreenDto> = emptyList()
     private var groups: List<GroupDto> = emptyList()
     private var students: List<StudentSyncDto> = emptyList()
+    private var guardians: List<GuardianSyncDto> = emptyList()
 
-    val defaultScreenId: String = "scr-ciclo-2026-2-a"
-
-    private val bundledGroups = listOf(
-        GroupDto("ciclo-2026-k-a", "Kinder", "A", "K-01", "Laura Pérez", "Zona A"),
-        GroupDto("ciclo-2026-k-b", "Kinder", "B", "K-03", "Sofía Ruiz", "Zona A"),
-        GroupDto("ciclo-2026-1-a", "1º Primaria", "A", "A-01", "Diego Soto", "Zona A"),
-        GroupDto("ciclo-2026-1-b", "1º Primaria", "B", "A-02", "Paola Méndez", "Zona A"),
-        GroupDto("ciclo-2026-1-c", "1º Primaria", "C", "A-03", "Lucía Vargas", "Zona A"),
-        GroupDto("ciclo-2026-2-a", "2º Primaria", "A", "A-12", "Ana Martínez", "Zona A"),
-        GroupDto("ciclo-2026-2-b", "2º Primaria", "B", "A-13", "Miguel Torres", "Zona A"),
-        GroupDto("ciclo-2026-2-c", "2º Primaria", "C", "A-14", "Andrés Peña", "Zona A"),
-        GroupDto("ciclo-2026-3-a", "3º Primaria", "A", "B-01", "Elena Cruz", "Zona B"),
-        GroupDto("ciclo-2026-3-b", "3º Primaria", "B", "B-02", "Jorge Díaz", "Zona B"),
-        GroupDto("ciclo-2026-4-a", "4º Primaria", "A", "B-11", "Carmen Ortiz", "Zona B"),
-        GroupDto("ciclo-2026-4-b", "4º Primaria", "B", "B-12", "Iván León", "Zona B"),
-        GroupDto("ciclo-2026-5-a", "5º Primaria", "A", "C-01", "Raúl Pineda", "Zona C"),
-        GroupDto("ciclo-2026-5-b", "5º Primaria", "B", "C-02", "Marina Solís", "Zona C"),
-        GroupDto("ciclo-2026-5-c", "5º Primaria", "C", "C-05", "Ricardo López", "Zona C"),
-        GroupDto("ciclo-2026-6-a", "6º Primaria", "A", "C-11", "Pablo Reyes", "Zona C"),
-        GroupDto("ciclo-2026-6-b", "6º Primaria", "B", "C-12", "Adriana Mora", "Zona C"),
-        GroupDto("ciclo-2026-6-c", "6º Primaria", "C", "C-13", "Sergio Núñez", "Zona C"),
-    )
-
-    private val bundledScreens = bundledGroups.map { group ->
-        ScreenDto(
-            id = "scr-${group.id}",
-            name = "Pantalla ${group.classroom}",
-            location = "Salón ${group.classroom}",
-            groupId = group.id,
-            pairingCode = "CSI-${group.classroom.replace("-", "")}",
-            online = true
-        )
+    suspend fun defaultScreenId(): String = mutex.withLock {
+        screens.firstOrNull()?.id.orEmpty()
     }
 
-    private fun activeScreens() = screens.ifEmpty { bundledScreens }
-    private fun activeGroups() = groups.ifEmpty { bundledGroups }
-
-    suspend fun replace(request: SchoolSyncRequest) = mutex.withLock {
+    suspend fun replace(request: SchoolSyncRequest, persist: Boolean = true) = mutex.withLock {
         schoolName = request.schoolName.ifBlank { schoolName }
         screens = request.screens
         groups = request.groups
         students = request.students
+        guardians = request.guardians
+        if (persist) {
+            RecogeYaDb.put("roster", RecogeYaDb.json.encodeToString(SchoolSyncRequest.serializer(), request))
+        }
+    }
+
+    suspend fun restore() {
+        val raw = RecogeYaDb.get("roster") ?: return
+        val request = runCatching {
+            RecogeYaDb.json.decodeFromString(SchoolSyncRequest.serializer(), raw)
+        }.getOrNull() ?: return
+        replace(request, persist = false)
     }
 
     suspend fun hasRoster(): Boolean = mutex.withLock { students.isNotEmpty() }
 
     suspend fun screenById(id: String?): ScreenDto? = mutex.withLock {
-        val key = id?.ifBlank { null } ?: defaultScreenId
-        val pool = activeScreens()
-        pool.find { it.id == key }
-            ?: pool.find { it.groupId?.endsWith("-2-a") == true }
-            ?: pool.firstOrNull()
+        val key = id?.ifBlank { null }
+        if (key != null) screens.find { it.id == key } else screens.firstOrNull()
     }
 
     suspend fun screenByCode(code: String): ScreenDto? = mutex.withLock {
         val needle = normalizeCode(code)
-        val pool = activeScreens()
-        pool.find { normalizeCode(it.pairingCode) == needle }
-            ?: pool.find { normalizeCode(it.pairingCode) == needle.replace('1', 'I') }
+        screens.find { normalizeCode(it.pairingCode) == needle }
     }
 
     private fun normalizeCode(code: String) = code.trim().uppercase().replace("-", "").replace(" ", "")
 
     suspend fun screensForPicker(): List<ScreenPickDto> = mutex.withLock {
-        val groupPool = activeGroups()
-        activeScreens()
-            .filter { it.groupId != null }
+        screens
             .map { screen ->
-                val group = groupPool.find { it.id == screen.groupId }
+                val group = groups.find { it.id == screen.groupId }
                 ScreenPickDto(
                     id = screen.id,
                     name = screen.name,
                     pairingCode = screen.pairingCode,
-                    groupLabel = group?.let { "${it.grade} • Grupo ${it.letter}" } ?: screen.name,
+                    groupLabel = group?.let { "${it.grade} • Grupo ${it.letter}" } ?: "${screen.name} (sin grupo)",
                     classroom = group?.classroom ?: screen.location.replace("Salón ", "")
                 )
             }
-            .sortedWith(
-                compareBy<ScreenPickDto> { if (it.id.contains("-2-a")) 0 else 1 }
-                    .thenBy { it.groupLabel }
-            )
+            .sortedBy { it.groupLabel }
     }
 
     suspend fun classroomFor(screen: ScreenDto?): ClassroomInfo = mutex.withLock {
-        val group = activeGroups().find { it.id == screen?.groupId }
+        val group = groups.find { it.id == screen?.groupId }
         val enrolled = students.count { it.groupId == group?.id && it.status != "inactivo" }
+        val teacher = group?.teacherName?.ifBlank { null }
         ClassroomInfo(
             school = schoolName,
-            grade = group?.let { "${it.grade} • Grupo ${it.letter}" } ?: "2º Primaria • Grupo A",
-            teacher = group?.teacherName?.ifBlank { "Sin profesor" }?.let { if (it.startsWith("Prof") || it == "Sin profesor") it else "Prof. $it" }
-                ?: "Prof. Ana Martínez",
-            classroom = group?.classroom?.let { "Salón $it" } ?: "Salón A-12",
-            zone = group?.zoneName?.ifBlank { "Zona A" } ?: "Zona A",
-            totalStudents = if (enrolled > 0) enrolled else 26,
-            screenId = screen?.id ?: defaultScreenId,
-            groupId = group?.id ?: "ciclo-2026-2-a",
-            pairingCode = screen?.pairingCode ?: "CSI-A12"
+            grade = group?.let { "${it.grade} • Grupo ${it.letter}" } ?: "Sin grupo",
+            teacher = when {
+                teacher == null -> "Sin profesor"
+                teacher.startsWith("Prof") -> teacher
+                else -> "Prof. $teacher"
+            },
+            classroom = group?.classroom?.let { "Salón $it" } ?: "Sin salón",
+            zone = group?.zoneName?.ifBlank { "Sin zona" } ?: "Sin zona",
+            totalStudents = enrolled,
+            screenId = screen?.id.orEmpty(),
+            groupId = group?.id.orEmpty(),
+            pairingCode = screen?.pairingCode.orEmpty()
         )
     }
 
     suspend fun rosterFor(groupId: String): List<RosterStudent> = mutex.withLock {
+        if (groupId.isBlank()) return@withLock emptyList()
         students
             .filter { it.groupId == groupId && it.status != "inactivo" }
             .map {
@@ -126,5 +101,91 @@ object SchoolRoster {
 
     suspend fun rosterIds(groupId: String): Set<String> = mutex.withLock {
         students.filter { it.groupId == groupId }.map { it.id }.toSet()
+    }
+
+    suspend fun groupForStudent(studentId: String): GroupDto? = mutex.withLock {
+        val student = students.find { it.id == studentId } ?: return@withLock null
+        groups.find { it.id == student.groupId }
+    }
+
+    suspend fun parentStateMeta(childIds: List<String>): Triple<String, String, Pair<Double, Double>?> = mutex.withLock {
+        val first = childIds.firstNotNullOfOrNull { id ->
+            val student = students.find { it.id == id } ?: return@firstNotNullOfOrNull null
+            groups.find { it.id == student.groupId }
+        }
+        val coords = if (first?.zoneLat != null && first.zoneLng != null) {
+            first.zoneLat to first.zoneLng
+        } else {
+            null
+        }
+        Triple(first?.zoneName.orEmpty(), first?.zonePhone.orEmpty(), coords)
+    }
+
+    suspend fun login(email: String, password: String): ParentLoginResponse = mutex.withLock {
+        val mail = email.trim()
+        val pass = password.trim()
+        if (mail.isBlank() || pass.isBlank()) {
+            return@withLock ParentLoginResponse(ok = false, error = "Escribe correo y contraseña.")
+        }
+        val guardian = guardians.find {
+            it.email.equals(mail, ignoreCase = true) && it.password == pass && it.password.isNotBlank()
+        } ?: return@withLock ParentLoginResponse(
+            ok = false,
+            error = "Correo o contraseña incorrectos. Usa los datos que te envió la escuela."
+        )
+        val kids = students.filter { student ->
+            student.status != "inactivo" && guardian.id in student.guardianIds
+        }
+        val childDtos = kids.map { student ->
+            val group = groups.find { it.id == student.groupId }
+            ParentChildDto(
+                id = student.id,
+                firstName = student.firstName,
+                lastName = student.lastName,
+                grade = group?.grade.orEmpty(),
+                group = group?.letter.orEmpty(),
+                teacher = group?.teacherName.orEmpty(),
+                classroom = group?.classroom.orEmpty(),
+                schoolId = "school",
+                schoolName = schoolName,
+                zone = group?.zoneName.orEmpty(),
+                zonePhone = group?.zonePhone.orEmpty(),
+                zoneLat = group?.zoneLat,
+                zoneLng = group?.zoneLng
+            )
+        }
+        val relatedIds = kids.flatMap { it.guardianIds }.toSet()
+        val people = guardians.filter { it.id in relatedIds }.map { person ->
+            val parts = person.name.trim().split(" ").filter { it.isNotBlank() }
+            val initials = buildString {
+                if (parts.isNotEmpty()) append(parts.first().first().uppercaseChar())
+                if (parts.size > 1) append(parts.last().first().uppercaseChar())
+            }
+            ParentPersonDto(
+                id = person.id,
+                name = person.name,
+                initials = initials.ifBlank { "R" },
+                relation = person.relation,
+                kind = person.kind
+            )
+        }
+        val zone = childDtos.firstOrNull()?.zone.orEmpty()
+        val phone = childDtos.firstOrNull()?.zonePhone.orEmpty()
+        val nameParts = guardian.name.trim().split(" ").filter { it.isNotBlank() }
+        val initials = buildString {
+            if (nameParts.isNotEmpty()) append(nameParts.first().first().uppercaseChar())
+            if (nameParts.size > 1) append(nameParts.last().first().uppercaseChar())
+        }
+        ParentLoginResponse(
+            ok = true,
+            profileName = guardian.name,
+            profileInitials = initials.ifBlank { "R" },
+            email = guardian.email,
+            schoolName = schoolName,
+            pickupZone = zone,
+            receptionPhone = phone,
+            children = childDtos,
+            people = people
+        )
     }
 }

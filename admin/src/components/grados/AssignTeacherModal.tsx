@@ -35,16 +35,22 @@ export function AssignTeacherModal({
         <label className="text-sm font-semibold">
           Profesor titular
           <div className="mt-1.5">
-            <MenuSelect
-              ariaLabel="Profesor titular"
-              value={selected}
-              align="left"
-              options={teachers.map((teacher) => ({
-                value: teacher.id,
-                label: teacherName(teacher.firstName, teacher.lastName),
-              }))}
-              onChange={setSelected}
-            />
+            {teachers.length === 0 ? (
+              <p className="rounded-xl border border-app-line px-3.5 py-2.5 text-sm text-app-muted">
+                Primero da de alta profesores en la sección Profesores.
+              </p>
+            ) : (
+              <MenuSelect
+                ariaLabel="Profesor titular"
+                value={selected}
+                align="left"
+                options={teachers.map((teacher) => ({
+                  value: teacher.id,
+                  label: teacherName(teacher.firstName, teacher.lastName),
+                }))}
+                onChange={setSelected}
+              />
+            )}
           </div>
         </label>
         {error ? <p className="text-sm font-medium text-app-danger">{error}</p> : null}
@@ -58,7 +64,8 @@ export function AssignTeacherModal({
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-app-primary-hover"
+            className="rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-app-primary-hover disabled:opacity-40"
+            disabled={teachers.length === 0}
           >
             Guardar asignación
           </button>

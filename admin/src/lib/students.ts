@@ -35,8 +35,10 @@ export function avatarTone(id: string) {
 }
 
 export function ageYears(birthDate: string, today = todayISO()) {
+  if (!birthDate) return 0
   const birth = new Date(`${birthDate}T00:00:00`)
   const now = new Date(`${today}T00:00:00`)
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(now.getTime())) return 0
   let age = now.getFullYear() - birth.getFullYear()
   const month = now.getMonth() - birth.getMonth()
   if (month < 0 || (month === 0 && now.getDate() < birth.getDate())) age -= 1
@@ -58,6 +60,7 @@ export function daysUntilBirthday(birthDate: string, today = todayISO()) {
 }
 
 export function isBirthdaySoon(birthDate: string, withinDays = 7, today = todayISO()) {
+  if (!birthDate) return false
   const days = daysUntilBirthday(birthDate, today)
   return days >= 0 && days <= withinDays
 }
@@ -123,7 +126,7 @@ export function createStudentDefaults(input: {
   isNew?: boolean
 }): Student {
   const gender = input.gender ?? "Masculino"
-  const birthDate = input.birthDate ?? "2017-01-15"
+  const birthDate = input.birthDate ?? ""
   return {
     id: input.id ?? `alu-${Date.now().toString(36)}`,
     firstName: input.firstName.trim(),
@@ -133,16 +136,16 @@ export function createStudentDefaults(input: {
     guardianIds: input.guardianIds ?? [],
     matricula: input.matricula,
     status: input.status ?? "activo",
-    attendancePct: input.attendancePct ?? 90,
+    attendancePct: input.attendancePct ?? 0,
     birthDate,
-    enrolledAt: input.enrolledAt ?? "2026-08-15",
+    enrolledAt: input.enrolledAt ?? todayISO(),
     gender,
     nationality: input.nationality ?? "Mexicana",
     curp: input.curp ?? makeCurp(input.lastName, input.firstName, birthDate, gender),
-    address: input.address ?? "Av. Insurgentes Sur 1443, Ciudad de México",
-    bloodType: input.bloodType ?? "O+",
-    allergies: input.allergies ?? "Ninguna",
-    medicalNotes: input.medicalNotes ?? "Sin observaciones",
+    address: input.address ?? "",
+    bloodType: input.bloodType ?? "",
+    allergies: input.allergies ?? "",
+    medicalNotes: input.medicalNotes ?? "",
     isNew: input.isNew ?? false,
   }
 }
@@ -180,26 +183,12 @@ export function parseStudentCsv(text: string) {
   })
 }
 
-export function attendanceSeries(pct: number) {
-  const labels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"]
-  return labels.map((label, index) => ({
-    label,
-    pct: Math.min(100, Math.max(72, pct - 4 + ((index * 3) % 7))),
-  }))
+export function attendanceSeries(_pct: number) {
+  return [] as Array<{ label: string; pct: number }>
 }
 
-export function pickupHistory(student: Student) {
-  const zones = ["Zona A", "Zona B", "Zona C"]
-  const statuses = ["Entregado", "Entregado", "Entregado", "Con retraso"] as const
-  return [0, 1, 2, 3, 4].map((offset) => {
-    const day = 22 - offset
-    return {
-      id: `${student.id}-p${offset}`,
-      date: `2026-08-${String(Math.max(1, day)).padStart(2, "0")}`,
-      zone: zones[offset % zones.length] ?? "Zona A",
-      status: statuses[offset % statuses.length] ?? "Entregado",
-    }
-  })
+export function pickupHistory(_student: Student) {
+  return [] as Array<{ id: string; date: string; zone: string; status: string }>
 }
 
 export function upsertGuardians(
@@ -208,6 +197,7 @@ export function upsertGuardians(
     id?: string
     name: string
     email: string
+    password?: string
     phone: string
     relation: string
     kind: GuardianKind
@@ -234,6 +224,7 @@ export function upsertGuardians(
       id: target?.id ?? `g-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name,
       email,
+      password: draft.password?.trim() || target?.password || generateParentPassword(),
       phone,
       relation,
       kind: draft.kind,
@@ -247,13 +238,11 @@ export function upsertGuardians(
   return { guardians, ids }
 }
 
-export function studentDocuments(student: Student) {
-  const docs = [{ id: `${student.id}-curp`, name: "CURP", kind: "Identificación", uploadedAt: student.enrolledAt }]
-  if (student.id === "lucas") {
-    docs.push(
-      { id: "lucas-acta", name: "Acta de nacimiento", kind: "Legal", uploadedAt: "2026-08-12" },
-      { id: "lucas-comprobante", name: "Comprobante de domicilio", kind: "Domicilio", uploadedAt: "2026-08-12" },
-    )
-  }
-  return docs
+export function generateParentPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
+}
+
+export function studentDocuments(_student: Student) {
+  return [] as Array<{ id: string; name: string; kind: string; uploadedAt: string }>
 }

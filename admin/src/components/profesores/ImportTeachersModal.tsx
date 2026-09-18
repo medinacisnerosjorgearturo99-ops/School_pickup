@@ -11,7 +11,7 @@ export function ImportTeachersModal({
   onClose: () => void
   onImport: (csv: string) => { count: number } | { error: string }
 }) {
-  const [csv, setCsv] = useState("Nombre,Apellido,Correo,Asignatura,Área\nMaría,Soto,maria.soto@sanignacio.edu.mx,Inglés,Idiomas")
+  const [csv, setCsv] = useState("Nombre,Apellido,Correo,Asignatura,Área")
   const [error, setError] = useState("")
 
   function submit(event: FormEvent) {

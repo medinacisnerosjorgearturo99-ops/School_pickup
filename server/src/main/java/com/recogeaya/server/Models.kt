@@ -22,7 +22,9 @@ data class PickupEntry(
     val etaMinutes: Int? = null,
     val arrived: Boolean = false,
     val action: String = TeacherAction.PREPARAR.name,
-    val fromParentApp: Boolean = false
+    val fromParentApp: Boolean = false,
+    val verificationCode: String = "",
+    val zone: String = ""
 ) {
     val fullName: String get() = "$firstName $lastName"
 }
@@ -43,7 +45,8 @@ data class ChildDto(
 data class NotifyPickupRequest(
     val children: List<ChildDto>,
     val responsibleName: String,
-    val etaMinutes: Int = 4
+    val etaMinutes: Int? = null,
+    val verificationCode: String = ""
 )
 
 @Serializable
@@ -58,16 +61,25 @@ data class ArrivedRequest(
 )
 
 @Serializable
+data class LocationUpdateRequest(
+    val childIds: List<String> = emptyList(),
+    val latitude: Double,
+    val longitude: Double,
+    val distanceMeters: Int? = null,
+    val etaMinutes: Int? = null
+)
+
+@Serializable
 data class ClassroomInfo(
-    val school: String = "Colegio San Ignacio",
-    val grade: String = "2º Primaria • Grupo A",
-    val teacher: String = "Prof. Ana Martínez",
-    val classroom: String = "Salón A-12",
-    val zone: String = "Zona A",
-    val totalStudents: Int = 26,
-    val screenId: String = "scr-ciclo-2026-2-a",
-    val groupId: String = "ciclo-2026-2-a",
-    val pairingCode: String = "CSI-A12"
+    val school: String = "Escuela",
+    val grade: String = "Sin grupo",
+    val teacher: String = "Sin profesor",
+    val classroom: String = "Sin salón",
+    val zone: String = "Sin zona",
+    val totalStudents: Int = 0,
+    val screenId: String = "",
+    val groupId: String = "",
+    val pairingCode: String = ""
 )
 
 @Serializable
@@ -98,7 +110,10 @@ data class GroupDto(
     val letter: String,
     val classroom: String,
     val teacherName: String,
-    val zoneName: String
+    val zoneName: String,
+    val zonePhone: String = "",
+    val zoneLat: Double? = null,
+    val zoneLng: Double? = null
 )
 
 @Serializable
@@ -109,15 +124,28 @@ data class StudentSyncDto(
     val initials: String,
     val groupId: String,
     val status: String = "activo",
-    val guardianName: String = ""
+    val guardianName: String = "",
+    val guardianIds: List<String> = emptyList()
+)
+
+@Serializable
+data class GuardianSyncDto(
+    val id: String,
+    val name: String,
+    val email: String,
+    val password: String = "",
+    val phone: String = "",
+    val relation: String = "",
+    val kind: String = "PRIMARY"
 )
 
 @Serializable
 data class SchoolSyncRequest(
-    val schoolName: String = "Colegio San Ignacio",
+    val schoolName: String = "Escuela",
     val screens: List<ScreenDto> = emptyList(),
     val groups: List<GroupDto> = emptyList(),
-    val students: List<StudentSyncDto> = emptyList()
+    val students: List<StudentSyncDto> = emptyList(),
+    val guardians: List<GuardianSyncDto> = emptyList()
 )
 
 @Serializable
@@ -139,4 +167,81 @@ data class ScreenPickDto(
 @Serializable
 data class ScreensResponse(
     val screens: List<ScreenPickDto> = emptyList()
+)
+
+@Serializable
+data class ParentLoginRequest(
+    val email: String,
+    val password: String
+)
+
+@Serializable
+data class ParentChildDto(
+    val id: String,
+    val firstName: String,
+    val lastName: String,
+    val grade: String,
+    val group: String,
+    val teacher: String,
+    val classroom: String,
+    val schoolId: String,
+    val schoolName: String,
+    val zone: String = "",
+    val zonePhone: String = "",
+    val zoneLat: Double? = null,
+    val zoneLng: Double? = null
+)
+
+@Serializable
+data class ParentPersonDto(
+    val id: String,
+    val name: String,
+    val initials: String,
+    val relation: String,
+    val kind: String
+)
+
+@Serializable
+data class ParentLoginResponse(
+    val ok: Boolean,
+    val error: String? = null,
+    val profileName: String = "",
+    val profileInitials: String = "",
+    val email: String = "",
+    val schoolName: String = "",
+    val pickupZone: String = "",
+    val receptionPhone: String = "",
+    val children: List<ParentChildDto> = emptyList(),
+    val people: List<ParentPersonDto> = emptyList()
+)
+
+@Serializable
+data class ParentStateResponse(
+    val pickups: List<PickupEntry> = emptyList(),
+    val zone: String = "",
+    val receptionPhone: String = "",
+    val zoneLat: Double? = null,
+    val zoneLng: Double? = null
+)
+
+@Serializable
+data class PickupEvent(
+    val id: String,
+    val at: String,
+    val childName: String,
+    val groupLabel: String,
+    val zone: String,
+    val responsibleName: String,
+    val event: String
+)
+
+@Serializable
+data class PickupHistoryResponse(
+    val events: List<PickupEvent> = emptyList()
+)
+
+@Serializable
+data class PickupSnapshot(
+    val pickups: List<PickupEntry> = emptyList(),
+    val history: List<PickupEvent> = emptyList()
 )

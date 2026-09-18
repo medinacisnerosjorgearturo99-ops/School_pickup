@@ -2,10 +2,7 @@ package com.recogeaya.padres.ui.tracking
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
@@ -34,11 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,7 +38,6 @@ import androidx.compose.ui.unit.sp
 import com.recogeaya.padres.data.Child
 import com.recogeaya.padres.data.ChildPickupProgress
 import com.recogeaya.padres.data.PickupStep
-import com.recogeaya.padres.data.SampleData
 import com.recogeaya.padres.ui.combinedChildrenTitle
 import com.recogeaya.padres.ui.components.AppCard
 import com.recogeaya.padres.ui.components.BackLink
@@ -63,9 +53,11 @@ import com.recogeaya.padres.ui.theme.RecogeYaTheme
 fun TrackingScreen(
     children: List<Child>,
     progress: List<ChildPickupProgress>,
-    distanceMeters: Int,
-    etaMinutes: Int,
     tvConnected: Boolean,
+    receptionPhone: String = "",
+    locationSharing: Boolean = false,
+    distanceMeters: Int? = null,
+    locationEtaMinutes: Int? = null,
     onArrived: () -> Unit,
     onCancel: () -> Unit,
     onBack: () -> Unit
@@ -74,7 +66,9 @@ fun TrackingScreen(
     val context = LocalContext.current
     var showCancelDialog by remember { mutableStateOf(false) }
     val overallStep = progress.minByOrNull { it.step.ordinal }?.step ?: PickupStep.AVISADO
-    val zone = progress.firstOrNull { it.zone != null }?.zone ?: SampleData.pickupZone
+    val zone = progress.firstOrNull { !it.zone.isNullOrBlank() }?.zone.orEmpty()
+    val zoneLabel = zone.ifBlank { "Zona de entrega" }
+    val phone = receptionPhone.trim()
 
     RecogeYaBottomScreen(
         bottomContent = {
@@ -85,21 +79,26 @@ fun TrackingScreen(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = RecogeYaColors.Primary)
             ) {
-                Text("Ya llegué a $zone", fontWeight = FontWeight.Bold)
+                Text(
+                    if (zone.isBlank()) "Ya llegué" else "Ya llegué a $zone",
+                    fontWeight = FontWeight.Bold
+                )
             }
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${SampleData.receptionPhone}"))
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = RecogeYaColors.TextMain)
-            ) {
-                Icon(Icons.Filled.Phone, contentDescription = null, tint = RecogeYaColors.TextMain)
-                Spacer(Modifier.width(8.dp))
-                Text("Llamar a Recepción", fontWeight = FontWeight.SemiBold)
+            if (phone.isNotBlank()) {
+                OutlinedButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RecogeYaColors.TextMain)
+                ) {
+                    Icon(Icons.Filled.Phone, contentDescription = null, tint = RecogeYaColors.TextMain)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Llamar a Recepción", fontWeight = FontWeight.SemiBold)
+                }
             }
             TextButton(
                 onClick = { showCancelDialog = true },
@@ -146,22 +145,49 @@ fun TrackingScreen(
             Spacer(Modifier.height(10.dp))
         }
 
-        AppCard {
-            Column(Modifier.padding(dimens.cardPad)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Tu proximidad", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        if (locationSharing || distanceMeters != null || locationEtaMinutes != null) {
+            AppCard {
+                Column(Modifier.padding(dimens.cardPad)) {
+                    Text("Tu ubicación", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "$distanceMeters m  •  ~$etaMinutes min",
-                        color = RecogeYaColors.Primary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
+                        if (locationSharing) {
+                            "Se comparte con el salón solo durante esta recogida."
+                        } else {
+                            "Ya no se comparte ubicación."
+                        },
+                        color = RecogeYaColors.TextMuted,
+                        fontSize = 13.sp
                     )
+                    if (distanceMeters != null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            formatDistance(distanceMeters),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp
+                        )
+                    }
+                    if (locationEtaMinutes != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            if (locationEtaMinutes == 0) "Estás en la zona de entrega" else "Llegas en ~$locationEtaMinutes min",
+                            color = RecogeYaColors.TextMuted,
+                            fontSize = 13.sp
+                        )
+                    } else if (locationSharing) {
+                        Spacer(Modifier.height(2.dp))
+                        Text("Buscando señal GPS…", color = RecogeYaColors.TextMuted, fontSize = 13.sp)
+                    }
                 }
-                Spacer(Modifier.height(12.dp))
-                ProximityTrack(zoneName = zone)
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
+        if (zone.isNotBlank()) {
+            AppCard {
+                Column(Modifier.padding(dimens.cardPad)) {
+                    Text(zoneLabel, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -199,8 +225,8 @@ private fun ChildTrackingCard(child: Child, progress: ChildPickupProgress) {
                 Text(child.gradeGroup, color = RecogeYaColors.TextMuted, fontSize = 13.sp)
                 Spacer(Modifier.height(4.dp))
                 val detail = when (progress.step) {
-                    PickupStep.LISTO -> progress.zone ?: SampleData.pickupZone
-                    PickupStep.PREPARANDO -> "~${progress.readyEtaMinutes ?: 3} min"
+                    PickupStep.LISTO -> progress.zone?.takeIf { it.isNotBlank() } ?: "Zona de entrega"
+                    PickupStep.PREPARANDO -> progress.readyEtaMinutes?.let { "~$it min" } ?: "Preparando"
                     PickupStep.AVISADO -> "Avisado"
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -223,42 +249,10 @@ private fun ChildTrackingCard(child: Child, progress: ChildPickupProgress) {
     }
 }
 
-@Composable
-private fun ProximityTrack(zoneName: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, RecogeYaColors.PrimarySoft, RoundedCornerShape(14.dp))
-            .background(Color(0xFFF5F9FF))
-            .padding(horizontal = 12.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.DirectionsCar, null, tint = RecogeYaColors.Primary)
-            Text("TÚ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = RecogeYaColors.TextMuted)
-        }
-        Canvas(
-            modifier = Modifier
-                .weight(1f)
-                .height(18.dp)
-                .padding(horizontal = 8.dp)
-        ) {
-            val y = size.height / 2
-            drawLine(
-                color = RecogeYaColors.Primary,
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 4f,
-                cap = StrokeCap.Round,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 12f))
-            )
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.LocationOn, null, tint = RecogeYaColors.Primary)
-            Text(zoneName.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = RecogeYaColors.TextMuted)
-        }
-    }
+private fun formatDistance(meters: Int): String {
+    if (meters < 1000) return "$meters m de la zona"
+    val km = meters / 1000.0
+    return "${"%.1f".format(km)} km de la zona"
 }
 
 @Preview(showBackground = true, widthDp = 411, heightDp = 891)
@@ -267,14 +261,9 @@ private fun ProximityTrack(zoneName: String) {
 private fun TrackingPreview() {
     RecogeYaTheme {
         TrackingScreen(
-            children = SampleData.children.take(2),
-            progress = listOf(
-                ChildPickupProgress("lucas", PickupStep.LISTO, zone = "Zona A", parentEtaMinutes = 2),
-                ChildPickupProgress("daniela", PickupStep.PREPARANDO, zone = "Zona A", readyEtaMinutes = 3)
-            ),
-            distanceMeters = 450,
-            etaMinutes = 2,
-            tvConnected = true,
+            children = emptyList(),
+            progress = emptyList(),
+            tvConnected = false,
             onArrived = {},
             onCancel = {},
             onBack = {}

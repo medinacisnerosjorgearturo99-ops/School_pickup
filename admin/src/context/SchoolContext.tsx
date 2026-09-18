@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { CURRENT_CYCLE_ID, schoolSeed } from "../data/seed"
+import { EMPTY_CYCLE, schoolSeed } from "../data/seed"
 import { addYears, deriveCycleStatus, labelFromDates } from "../lib/cycle"
 import { defaultSchedule, gradeShort } from "../lib/grades"
 import { createStudentDefaults, nextMatricula, parseStudentCsv, syncGroupCounts, upsertGuardians } from "../lib/students"
 import { nextEmployeeId, parseTeacherCsv } from "../lib/teachers"
-import { buildSchoolSync, ensureScreens, publishSchoolSync, screenFromGroup } from "../lib/tvSync"
+import { buildSchoolSync, ensureScreens, fetchAdminSchool, persistAdminSchool, publishSchoolSync, screenFromGroup } from "../lib/tvSync"
 import type {
   AcademicGrade,
   AcademicStatus,
@@ -25,11 +25,12 @@ import type {
 
 export type TvSyncStatus = "idle" | "syncing" | "ok" | "error"
 
-const CYCLES_KEY = "recogeya-cycles"
-const ACADEMIC_KEY = "recogeya-academic"
-const TEACHERS_KEY = "recogeya-teachers"
-const ZONES_KEY = "recogeya-zones"
-const SCREENS_KEY = "recogeya-screens"
+const CYCLES_KEY = "recogeya-v3-cycles"
+const ACADEMIC_KEY = "recogeya-v3-academic"
+const TEACHERS_KEY = "recogeya-v3-teachers"
+const ZONES_KEY = "recogeya-v3-zones"
+const SCREENS_KEY = "recogeya-v3-screens"
+const SCHOOL_KEY = "recogeya-v3-school"
 
 export interface CycleDraft {
   label: string
@@ -62,6 +63,7 @@ export interface GuardianDraft {
   id?: string
   name: string
   email: string
+  password?: string
   phone: string
   relation: string
   kind: GuardianKind
@@ -120,6 +122,8 @@ export interface ZoneDraft {
   mapX: number
   mapY: number
   color: string
+  latitude?: number | null
+  longitude?: number | null
 }
 
 interface DashboardStats {
@@ -165,6 +169,7 @@ interface SchoolContextValue {
   syncNow: () => Promise<void>
   syncStatus: TvSyncStatus
   lastSyncAt: string | null
+  updateSchoolProfile: (draft: { schoolName: string; adminName: string; adminEmail: string }) => void
 }
 
 const SchoolContext = createContext<SchoolContextValue | null>(null)
@@ -174,7 +179,8 @@ function readStoredCycles(): SchoolCycle[] | null {
     const raw = localStorage.getItem(CYCLES_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as SchoolCycle[]
-    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    if (!Array.isArray(parsed)) return null
+    if (parsed.length === 0) return parsed
     if (!parsed.every((cycle) => cycle.id && cycle.label && cycle.startDate && cycle.endDate)) return null
     return parsed
   } catch {
@@ -190,10 +196,6 @@ function persistCycles(cycles: SchoolCycle[]) {
   }
 }
 
-function studentsAreComplete(students: Student[]) {
-  return students.length > 40 && students.every((student) => Boolean(student.matricula) && Boolean(student.birthDate))
-}
-
 function readAcademic() {
   try {
     const raw = localStorage.getItem(ACADEMIC_KEY)
@@ -203,8 +205,8 @@ function readAcademic() {
     return {
       grades: parsed.grades,
       groups: parsed.groups,
-      students: studentsAreComplete(parsed.students) ? parsed.students : null,
-      guardians: Array.isArray(parsed.guardians) && parsed.guardians.length > 0 ? parsed.guardians : null,
+      students: Array.isArray(parsed.students) ? parsed.students : [],
+      guardians: Array.isArray(parsed.guardians) ? parsed.guardians : [],
     }
   } catch {
     return null
@@ -224,7 +226,8 @@ function readTeachers(): Teacher[] | null {
     const raw = localStorage.getItem(TEACHERS_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Teacher[]
-    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    if (!Array.isArray(parsed)) return null
+    if (parsed.length === 0) return parsed
     if (!parsed.every((teacher) => teacher.id && teacher.employeeId && Array.isArray(teacher.subjects))) return null
     return parsed
   } catch {
@@ -245,7 +248,8 @@ function readZones(): DeliveryZone[] | null {
     const raw = localStorage.getItem(ZONES_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as DeliveryZone[]
-    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    if (!Array.isArray(parsed)) return null
+    if (parsed.length === 0) return parsed
     if (!parsed.every((zone) => zone.id && zone.letter && typeof zone.capacity === "number")) return null
     return parsed
   } catch {
@@ -269,12 +273,37 @@ function persistScreens(screens: ClassroomScreen[]) {
   }
 }
 
+function readSchoolProfile(): Pick<SchoolState, "schoolName" | "adminName" | "adminEmail"> | null {
+  try {
+    const raw = localStorage.getItem(SCHOOL_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { schoolName?: string; adminName?: string; adminEmail?: string }
+    if (typeof parsed.schoolName !== "string") return null
+    return {
+      schoolName: parsed.schoolName,
+      adminName: typeof parsed.adminName === "string" ? parsed.adminName : "",
+      adminEmail: typeof parsed.adminEmail === "string" ? parsed.adminEmail : "",
+    }
+  } catch {
+    return null
+  }
+}
+
+function persistSchoolProfile(schoolName: string, adminName: string, adminEmail: string) {
+  try {
+    localStorage.setItem(SCHOOL_KEY, JSON.stringify({ schoolName, adminName, adminEmail }))
+  } catch {
+    /* ignore */
+  }
+}
+
 function readScreens(): ClassroomScreen[] | null {
   try {
     const raw = localStorage.getItem(SCREENS_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as ClassroomScreen[]
-    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    if (!Array.isArray(parsed)) return null
+    if (parsed.length === 0) return parsed
     if (!parsed.every((screen) => screen.id && screen.cycleId)) return null
     return parsed
   } catch {
@@ -297,28 +326,45 @@ function applyActiveRule(cycles: SchoolCycle[], activeId: string | null): School
   })
 }
 
+function cacheSchool(state: SchoolState) {
+  persistSchoolProfile(state.schoolName, state.adminName, state.adminEmail)
+  persistCycles(state.cycles)
+  persistAcademic(state.grades, state.groups, state.students, state.guardians)
+  persistTeachers(state.teachers)
+  persistZones(state.zones)
+  persistScreens(state.screens)
+}
+
 export function SchoolProvider({ children }: { children: ReactNode }) {
   const [school, setSchool] = useState<SchoolState>(() => {
     const academic = readAcademic()
     const students = academic?.students ?? schoolSeed.students
     const groups = academic?.groups ?? schoolSeed.groups
-    const guardians = academic?.students ? academic.guardians ?? schoolSeed.guardians : schoolSeed.guardians
+    const guardians = academic?.guardians ?? schoolSeed.guardians
+    const profile = readSchoolProfile()
     return {
       ...schoolSeed,
+      schoolName: profile?.schoolName || schoolSeed.schoolName,
+      adminName: profile?.adminName || schoolSeed.adminName,
+      adminEmail: profile?.adminEmail ?? schoolSeed.adminEmail,
       cycles: readStoredCycles() ?? schoolSeed.cycles,
       grades: academic?.grades ?? schoolSeed.grades,
-      groups: academic?.students ? groups : syncGroupCounts(groups, students),
+      groups: syncGroupCounts(groups, students),
       students,
       guardians,
       teachers: readTeachers() ?? schoolSeed.teachers,
       zones: readZones() ?? schoolSeed.zones,
-      screens: ensureScreens(academic?.students ? groups : syncGroupCounts(groups, students), readScreens() ?? schoolSeed.screens),
+      screens: ensureScreens(syncGroupCounts(groups, students), readScreens() ?? schoolSeed.screens),
     }
   })
-  const [cycleId, setCycleId] = useState(CURRENT_CYCLE_ID)
+  const [cycleId, setCycleId] = useState(() => {
+    const cycles = readStoredCycles() ?? schoolSeed.cycles
+    return cycles.find((cycle) => cycle.status === "activo")?.id ?? cycles[0]?.id ?? ""
+  })
   const [activityPeriod, setActivityPeriod] = useState<ActivityPeriod>("esta-semana")
   const [syncStatus, setSyncStatus] = useState<TvSyncStatus>("idle")
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false)
 
   const patchAcademic = useCallback(
     (patch: Partial<Pick<SchoolState, "grades" | "groups" | "students" | "guardians" | "screens">>) => {
@@ -394,7 +440,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
 
   const deleteCycle = useCallback(
     (id: string) => {
-      if (school.cycles.length <= 1) return "Debe existir al menos un ciclo escolar."
+      if (school.cycles.length === 0) return "No hay ciclos para eliminar."
       const next = school.cycles.filter((cycle) => cycle.id !== id)
       if (next.length === school.cycles.length) return "No se encontró el ciclo."
       const current = next.find((cycle) => deriveCycleStatus(cycle.startDate, cycle.endDate) === "activo")
@@ -412,6 +458,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
 
   const saveGrade = useCallback(
     (draft: GradeDraft, id?: string) => {
+      if (!cycleId && !id) return ""
       const name = draft.name.trim()
       const existing = id ? school.grades.find((grade) => grade.id === id) : undefined
       const gradeId = existing?.id ?? `${cycleId}-${name.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}-${Date.now().toString(36)}`
@@ -472,14 +519,14 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         capacity: draft.capacity,
         inactiveCount: existing?.inactiveCount ?? 0,
         pendingCount: existing?.pendingCount ?? 0,
-        attendancePct: existing?.attendancePct ?? 90,
+        attendancePct: existing?.attendancePct ?? 0,
         createdAt: existing?.createdAt ?? nowISO(),
         schedule: existing?.schedule ?? defaultSchedule(),
       }
       const groups = existing
         ? school.groups.map((group) => (group.id === saved.id ? saved : group))
         : [...school.groups, saved]
-      const nextScreen = screenFromGroup(saved, saved.cycleId.includes("2026"))
+      const nextScreen = screenFromGroup(saved, saved.status === "activo")
       const screens = school.screens.some((screen) => screen.id === nextScreen.id || screen.groupId === saved.id)
         ? school.screens.map((screen) =>
             screen.id === nextScreen.id || screen.groupId === saved.id
@@ -518,7 +565,10 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         lastName: last,
         cycleId: group.cycleId,
         groupId,
-        matricula: nextMatricula(school.students, group.cycleId === CURRENT_CYCLE_ID ? "2026" : "2025"),
+        matricula: nextMatricula(
+          school.students,
+          school.cycles.find((cycle) => cycle.id === group.cycleId)?.startDate.slice(0, 4) || String(new Date().getFullYear()),
+        ),
         isNew: true,
         enrolledAt: school.cycles.find((cycle) => cycle.id === group.cycleId)?.startDate,
       })
@@ -639,6 +689,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
       const first = draft.firstName.trim()
       const last = draft.lastName.trim()
       const email = draft.email.trim()
+      if (!cycleId) return { error: "Crea un ciclo escolar antes de dar de alta profesores." }
       if (!first || !last) return { error: "Escribe nombre y apellido." }
       if (!email) return { error: "Escribe el correo institucional." }
       const existing = id ? school.teachers.find((teacher) => teacher.id === id) : undefined
@@ -698,21 +749,21 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         const result = {
           firstName: row.firstName,
           lastName: row.lastName,
-          email: row.email || `${row.firstName.toLowerCase()}.${row.lastName.toLowerCase().split(" ")[0]}@sanignacio.edu.mx`,
+          email: row.email || `${row.firstName.toLowerCase()}.${row.lastName.toLowerCase().split(" ")[0]}@escuela.edu`,
           active: true,
           subjects: [row.subject],
           area: row.area,
           role: "Profesor titular",
           hoursPerWeek: 20,
-          rating: 4.5,
+          rating: 0,
           hiredAt: new Date().toISOString().slice(0, 10),
           gender: "Femenino" as Gender,
-          birthDate: "1990-01-15",
+          birthDate: "",
           curp: "",
           rfc: "",
           phone: "",
           personalEmail: "",
-          address: "Ciudad de México",
+          address: "",
         }
         const first = result.firstName.trim()
         const last = result.lastName.trim()
@@ -729,7 +780,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
           role: result.role,
           extraGroupIds: [],
           hoursPerWeek: 20,
-          rating: 4.5,
+          rating: 0,
           hiredAt: result.hiredAt,
           isNew: true,
           birthDate: result.birthDate,
@@ -785,6 +836,8 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         mapX: draft.mapX,
         mapY: draft.mapY,
         color: draft.color,
+        latitude: draft.latitude ?? null,
+        longitude: draft.longitude ?? null,
       }
       const zones = existing
         ? school.zones.map((zone) => (zone.id === saved.id ? saved : zone))
@@ -869,9 +922,18 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     [patchScreens, school.screens],
   )
 
+  const updateSchoolProfile = useCallback((draft: { schoolName: string; adminName: string; adminEmail: string }) => {
+    const schoolName = draft.schoolName.trim() || "Tu escuela"
+    const adminName = draft.adminName.trim() || "Administrador"
+    const adminEmail = draft.adminEmail.trim()
+    persistSchoolProfile(schoolName, adminName, adminEmail)
+    setSchool((current) => ({ ...current, schoolName, adminName, adminEmail }))
+  }, [])
+
   const syncNow = useCallback(async () => {
     setSyncStatus("syncing")
     try {
+      await persistAdminSchool(school)
       await publishSchoolSync(buildSchoolSync(school, cycleId))
       setSyncStatus("ok")
       setLastSyncAt(new Date().toISOString())
@@ -881,9 +943,27 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
   }, [cycleId, school])
 
   useEffect(() => {
+    let cancelled = false
+    void fetchAdminSchool().then((remote) => {
+      if (cancelled) return
+      if (remote) {
+        cacheSchool(remote)
+        setSchool(remote)
+        setCycleId(remote.cycles.find((cycle) => cycle.status === "activo")?.id ?? remote.cycles[0]?.id ?? "")
+      }
+      setHydrated(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
     const handle = window.setTimeout(() => {
       setSyncStatus((current) => (current === "idle" ? "syncing" : current))
-      void publishSchoolSync(buildSchoolSync(school, cycleId))
+      void persistAdminSchool(school)
+        .then(() => publishSchoolSync(buildSchoolSync(school, cycleId)))
         .then(() => {
           setSyncStatus("ok")
           setLastSyncAt(new Date().toISOString())
@@ -891,10 +971,10 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         .catch(() => setSyncStatus("error"))
     }, 800)
     return () => window.clearTimeout(handle)
-  }, [cycleId, school])
+  }, [cycleId, hydrated, school])
 
   const value = useMemo<SchoolContextValue>(() => {
-    const selectedCycle = school.cycles.find((cycle) => cycle.id === cycleId) ?? school.cycles[0]!
+    const selectedCycle = school.cycles.find((cycle) => cycle.id === cycleId) ?? school.cycles[0] ?? EMPTY_CYCLE
     const groups = school.groups.filter((group) => group.cycleId === cycleId)
     const olderCycle = school.cycles.find(
       (cycle) => cycle.id !== cycleId && cycle.startDate < selectedCycle.startDate,
@@ -902,7 +982,8 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     const previousGroups = olderCycle
       ? school.groups.filter((group) => group.cycleId === olderCycle.id)
       : []
-    const teachers = school.teachers.filter((teacher) => teacher.cycleIds.includes(cycleId) && teacher.active)
+    const teachersAll = school.teachers.filter((teacher) => teacher.cycleIds.includes(cycleId))
+    const teachers = teachersAll.filter((teacher) => teacher.active)
     const screens = school.screens.filter((screen) => screen.cycleId === cycleId)
     const students = groups.reduce((sum, group) => sum + group.studentCount, 0)
     const previousStudents = previousGroups.reduce((sum, group) => sum + group.studentCount, 0)
@@ -920,9 +1001,9 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         students,
         studentsDelta: students - previousStudents,
         teachers: teachers.length,
-        teachersActivePct: teachers.length === 0 ? 0 : 100,
+        teachersActivePct: teachersAll.length === 0 ? 0 : Math.round((teachers.length / teachersAll.length) * 100),
         screens: screens.length,
-        screensOnline: screens.filter((screen) => screen.online).length,
+        screensOnline: screens.filter((screen) => Boolean(screen.groupId)).length,
       },
       saveCycle,
       duplicateCycle,
@@ -948,6 +1029,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
       syncNow,
       syncStatus,
       lastSyncAt,
+      updateSchoolProfile,
     }
   }, [
     activityPeriod,
@@ -977,6 +1059,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     syncNow,
     syncStatus,
     toggleScreenOnline,
+    updateSchoolProfile,
   ])
 
   return <SchoolContext.Provider value={value}>{children}</SchoolContext.Provider>

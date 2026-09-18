@@ -30,7 +30,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.recogeaya.padres.data.Child
-import com.recogeaya.padres.data.SampleData
 import com.recogeaya.padres.ui.components.AppCard
 import com.recogeaya.padres.ui.components.ChildAvatar
 import com.recogeaya.padres.ui.components.RecogeYaBottomScreen
@@ -46,6 +45,7 @@ fun ArrivalScreen(
     onDone: () -> Unit
 ) {
     val dimens = LocalAppDimens.current
+    val zoneLabel = zone.ifBlank { "la zona de entrega" }
 
     RecogeYaBottomScreen(
         bottomContent = {
@@ -84,7 +84,7 @@ fun ArrivalScreen(
                 textAlign = TextAlign.Center
             )
             Text(
-                "Dirígete a $zone",
+                "Dirígete a $zoneLabel",
                 color = RecogeYaColors.TextMuted,
                 fontSize = 16.sp
             )
@@ -139,7 +139,7 @@ fun ArrivalScreen(
             Icon(Icons.Filled.DirectionsCar, null, tint = RecogeYaColors.Primary)
             Spacer(Modifier.width(10.dp))
             Text(
-                "La escuela detectó tu llegada. El personal te recibirá en $zone.",
+                "El personal te recibirá en $zoneLabel.",
                 color = RecogeYaColors.TextMain,
                 fontSize = 13.sp
             )
@@ -153,8 +153,8 @@ fun ArrivalScreen(
 private fun ArrivalPreview() {
     RecogeYaTheme {
         ArrivalScreen(
-            children = SampleData.children.take(2),
-            zone = "Zona A",
+            children = emptyList(),
+            zone = "",
             onDone = {}
         )
     }

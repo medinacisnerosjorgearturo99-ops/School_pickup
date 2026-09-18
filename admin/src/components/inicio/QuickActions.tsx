@@ -6,7 +6,7 @@ const actions = [
   { label: "Nuevo grupo", icon: Users, to: "/grados" },
   { label: "Registrar alumno", icon: UserPlus, to: "/alumnos" },
   { label: "Asignar profesor", icon: GraduationCap, to: "/profesores" },
-  { label: "Nueva pantalla", icon: Monitor, to: "/pantallas" },
+  { label: "Ver pantallas", icon: Monitor, to: "/pantallas" },
   { label: "Zona de entrega", icon: MapPin, to: "/zonas" },
   { label: "Ver historial", icon: History, to: "/historial" },
 ]

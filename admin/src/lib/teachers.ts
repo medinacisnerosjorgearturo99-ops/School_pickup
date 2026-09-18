@@ -83,20 +83,12 @@ export function upcomingClasses(teacher: Teacher, groups: GradeGroup[], cycleId:
     })
 }
 
-export function teacherDocuments(teacher: Teacher) {
-  return [
-    { id: `${teacher.id}-contrato`, name: "Contrato laboral", kind: "Laboral", uploadedAt: teacher.hiredAt },
-    { id: `${teacher.id}-ine`, name: "Identificación oficial", kind: "Identificación", uploadedAt: teacher.hiredAt },
-    { id: `${teacher.id}-titulo`, name: "Título profesional", kind: "Académico", uploadedAt: teacher.hiredAt },
-  ]
+export function teacherDocuments(_teacher: Teacher) {
+  return [] as Array<{ id: string; name: string; kind: string; uploadedAt: string }>
 }
 
-export function teacherEvaluations(teacher: Teacher) {
-  return [
-    { id: `${teacher.id}-e1`, period: "1er bimestre", rating: teacher.rating, note: "Dominio de grupo y claridad en clase." },
-    { id: `${teacher.id}-e2`, period: "2º bimestre", rating: Math.min(5, Math.round((teacher.rating + 0.2) * 10) / 10), note: "Buena comunicación con familias." },
-    { id: `${teacher.id}-e3`, period: "Dirección", rating: teacher.rating, note: "Cumple horarios y reportes de asistencia." },
-  ]
+export function teacherEvaluations(_teacher: Teacher) {
+  return [] as Array<{ id: string; period: string; rating: number; note: string }>
 }
 
 export function parseTeacherCsv(text: string) {

@@ -39,7 +39,6 @@ import { MenuSelect } from "../components/ui/MenuSelect"
 import { Modal } from "../components/ui/Modal"
 import { ThemeToggle } from "../components/ui/ThemeToggle"
 
-const PREFERRED_ID = "zona-a"
 const PAGE_SIZE = 8
 const ZOOM_MIN = 0.9
 const ZOOM_MAX = 1.45
@@ -68,7 +67,7 @@ export function ZonasPage() {
   const [demandFilter, setDemandFilter] = useState<DemandFilter>("todos")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const [zoneId, setZoneId] = useState<string | null>(PREFERRED_ID)
+  const [zoneId, setZoneId] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [formZone, setFormZone] = useState<DeliveryZone | null | undefined>(undefined)
   const [assignOpen, setAssignOpen] = useState(false)
@@ -101,7 +100,6 @@ export function ZonasPage() {
 
   const selected =
     zones.find((zone) => zone.id === zoneId) ??
-    zones.find((zone) => zone.id === PREFERRED_ID) ??
     filtered[0] ??
     zones[0]
 
@@ -490,12 +488,16 @@ export function ZonasPage() {
       {historyOpen ? (
         <Modal title={`Historial · ${selected.name}`} onClose={() => setHistoryOpen(false)}>
           <ul className="space-y-2">
-            {zoneHistory(selected).map((item) => (
+            {zoneHistory(selected).length === 0 ? (
+              <li className="text-sm text-app-muted">Las entregas de esta zona se verán en Historial cuando un padre avise.</li>
+            ) : (
+              zoneHistory(selected).map((item) => (
               <li key={item.id} className="flex gap-3 rounded-xl border border-app-line px-3 py-2.5">
                 <span className="text-xs font-bold text-app-muted">{item.time}</span>
                 <p className="text-sm">{item.text}</p>
               </li>
-            ))}
+              ))
+            )}
           </ul>
         </Modal>
       ) : null}

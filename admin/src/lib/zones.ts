@@ -56,11 +56,6 @@ export function nextZoneLetter(zones: DeliveryZone[]) {
   return "Z"
 }
 
-export function zoneHistory(zone: DeliveryZone) {
-  return [
-    { id: `${zone.id}-h1`, time: "13:42", text: `${zone.studentsToday} alumnos entregados en el turno vespertino.` },
-    { id: `${zone.id}-h2`, time: "13:18", text: `Pico de ${Math.max(zone.vehiclesToday - 4, 1)} vehículos en fila.` },
-    { id: `${zone.id}-h3`, time: "07:55", text: "Cierre del horario matutino sin incidencias." },
-    { id: `${zone.id}-h4`, time: "07:12", text: "Apertura de zona y primer vehículo registrado." },
-  ]
+export function zoneHistory(_zone: DeliveryZone) {
+  return [] as Array<{ id: string; time: string; text: string }>
 }

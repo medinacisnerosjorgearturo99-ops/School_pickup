@@ -43,10 +43,12 @@ data class Child(
     val teacher: String,
     val classroom: String,
     val schoolId: String,
+    val zoneLat: Double? = null,
+    val zoneLng: Double? = null,
     val availability: ChildAvailability = ChildAvailability.ACTIVO
 ) {
-    val fullName: String get() = "$firstName $lastName"
-    val initials: String get() = "${firstName.first()}${lastName.first()}"
+    val fullName: String get() = "$firstName $lastName".trim()
+    val initials: String get() = "${firstName.firstOrNull() ?: '?'}${lastName.firstOrNull() ?: '?'}"
     val gradeGroup: String
         get() = if (group.isBlank()) grade else "$grade • $group"
 }
@@ -78,131 +80,33 @@ data class PickupActivityItem(
     val timestamp: String
 )
 
+/** Catálogo vacío: llena cuentas, hijos y responsables cuando la escuela los emita. */
 object SampleData {
-    const val demoPassword = "CSI-4821"
+    val schools = emptyList<School>()
+    val accounts = emptyList<ParentAccount>()
+    val children = emptyList<Child>()
+    val authorizedPeople = emptyList<ResponsiblePerson>()
+    val activities = emptyList<PickupActivityItem>()
 
-    val schools = listOf(
-        School("csi", "Colegio San Ignacio", "San Ignacio"),
-        School("ism", "Instituto Santa María", "Santa María")
-    )
-
-    val accounts = listOf(
-        ParentAccount(
-            email = "maria.gomez@gmail.com",
-            password = demoPassword,
-            profile = ParentProfile(name = "María Gómez López", initials = "MG"),
-        ),
-        ParentAccount(
-            email = "jorge.gomez@gmail.com",
-            password = demoPassword,
-            profile = ParentProfile(name = "Jorge Gómez Ramírez", initials = "JG"),
-        ),
-        ParentAccount(
-            email = "laura.martinez@gmail.com",
-            password = demoPassword,
-            profile = ParentProfile(name = "Laura Martínez", initials = "LM"),
-        ),
-        ParentAccount(
-            email = "sofia.martinez@email.com",
-            password = demoPassword,
-            profile = ParentProfile(name = "Sofía Martínez", initials = "SM"),
-        ),
-    )
-
-    val account get() = accounts.first()
+    val account: ParentAccount
+        get() = ParentAccount(
+            email = "",
+            password = "",
+            profile = ParentProfile(name = "Responsable", initials = "R")
+        )
 
     fun accountFor(email: String, password: String): ParentAccount? {
         val mail = email.trim()
         val pass = password.trim()
+        if (mail.isBlank() || pass.isBlank()) return null
         return accounts.find { it.email.equals(mail, ignoreCase = true) && it.password == pass }
     }
 
-    val children = listOf(
-        Child(
-            id = "lucas",
-            firstName = "Lucas",
-            lastName = "Gómez",
-            grade = "2º Primaria",
-            group = "Grupo A",
-            teacher = "Ana Martínez",
-            classroom = "A-12",
-            schoolId = "csi"
-        ),
-        Child(
-            id = "daniela",
-            firstName = "Daniela",
-            lastName = "Gómez",
-            grade = "5º Primaria",
-            group = "Grupo C",
-            teacher = "Ricardo López",
-            classroom = "C-05",
-            schoolId = "csi"
-        ),
-        Child(
-            id = "valentina",
-            firstName = "Valentina",
-            lastName = "Gómez",
-            grade = "Kinder A",
-            group = "",
-            teacher = "Marta Ríos",
-            classroom = "K-01",
-            schoolId = "ism"
-        )
-    )
+    const val receptionPhone = ""
+    const val pickupZone = ""
 
-    val authorizedPeople = listOf(
-        ResponsiblePerson(
-            id = "sofia",
-            name = "Sofía Martínez",
-            initials = "SM",
-            relation = "Madre principal",
-            kind = ResponsibleKind.PRIMARY,
-            authorizedLabel = "SELECCIONADA"
-        ),
-        ResponsiblePerson(
-            id = "carlos",
-            name = "Carlos Gómez",
-            initials = "CG",
-            relation = "Padre",
-            kind = ResponsibleKind.AUTHORIZED,
-            authorizedLabel = "AUTORIZADO"
-        ),
-        ResponsiblePerson(
-            id = "laura",
-            name = "Laura Martínez",
-            initials = "LM",
-            relation = "Abuela",
-            kind = ResponsibleKind.AUTHORIZED,
-            authorizedLabel = "AUTORIZADA"
-        )
-    )
-
-    val activities = listOf(
-        PickupActivityItem(
-            id = "a1",
-            title = "Entrega exitosa",
-            description = "Lucas Gómez fue recogido por Sofía Martínez",
-            timestamp = "Ayer, 13:52"
-        ),
-        PickupActivityItem(
-            id = "a2",
-            title = "Entrega exitosa",
-            description = "Daniela Gómez fue recogida por Sofía Martínez",
-            timestamp = "Ayer, 13:48"
-        ),
-        PickupActivityItem(
-            id = "a3",
-            title = "Entrega exitosa",
-            description = "Valentina Gómez fue recogida por Sofía Martínez",
-            timestamp = "Lunes, 13:10"
-        )
-    )
-
-    const val receptionPhone = "5550000000"
-    const val pickupZone = "Zona A"
-
-    fun schoolById(id: String): School =
-        schools.first { it.id == id }
+    fun schoolById(id: String): School? =
+        schools.find { it.id == id }
 
     fun childrenGroupedBySchool(): List<Pair<School, List<Child>>> =
         schools.mapNotNull { school ->

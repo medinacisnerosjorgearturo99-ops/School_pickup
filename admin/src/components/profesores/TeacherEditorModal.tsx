@@ -25,10 +25,10 @@ export function TeacherEditorModal({
   const [role, setRole] = useState(teacher?.role ?? "Profesor titular")
   const [subjects, setSubjects] = useState<string[]>(teacher?.subjects ?? ["Formación"])
   const [hoursPerWeek, setHoursPerWeek] = useState(String(teacher?.hoursPerWeek ?? 20))
-  const [rating, setRating] = useState(String(teacher?.rating ?? 4.5))
+  const [rating, setRating] = useState(String(teacher?.rating && teacher.rating > 0 ? teacher.rating : 4))
   const [hiredAt, setHiredAt] = useState(teacher?.hiredAt ?? new Date().toISOString().slice(0, 10))
   const [gender, setGender] = useState<Gender>(teacher?.gender ?? "Femenino")
-  const [birthDate, setBirthDate] = useState(teacher?.birthDate ?? "1990-01-15")
+  const [birthDate, setBirthDate] = useState(teacher?.birthDate ?? "")
   const [curp, setCurp] = useState(teacher?.curp ?? "")
   const [rfc, setRfc] = useState(teacher?.rfc ?? "")
   const [phone, setPhone] = useState(teacher?.phone ?? "")
@@ -48,8 +48,8 @@ export function TeacherEditorModal({
       setError("Las horas semanales deben ser mayores a 0.")
       return
     }
-    if (!Number.isFinite(score) || score < 1 || score > 5) {
-      setError("La evaluación va de 1 a 5.")
+    if (!Number.isFinite(score) || score < 0 || score > 5) {
+      setError("La evaluación va de 0 a 5.")
       return
     }
     const result = onSave(
@@ -83,16 +83,16 @@ export function TeacherEditorModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Nombre
-            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Ana" autoFocus />
+            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Nombre" autoFocus />
           </label>
           <label className="text-sm font-semibold">
             Apellidos
-            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Martínez López" />
+            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Apellidos" />
           </label>
         </div>
         <label className="text-sm font-semibold">
           Correo institucional
-          <input type="email" className={fieldClass} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="ana.martinez@sanignacio.edu.mx" />
+          <input type="email" className={fieldClass} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="correo@escuela.edu" />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
@@ -139,7 +139,7 @@ export function TeacherEditorModal({
           </label>
           <label className="text-sm font-semibold">
             Evaluación
-            <input type="number" min={1} max={5} step={0.1} className={fieldClass} value={rating} onChange={(event) => setRating(event.target.value)} />
+            <input type="number" min={0} max={5} step={0.1} className={fieldClass} value={rating} onChange={(event) => setRating(event.target.value)} />
           </label>
           <label className="text-sm font-semibold">
             Ingreso

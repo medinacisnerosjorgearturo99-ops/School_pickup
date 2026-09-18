@@ -2,98 +2,191 @@ package com.recogeaya.server
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Instant
 
 object PickupStore {
     private val mutex = Mutex()
     private val pickups = linkedMapOf<String, PickupEntry>()
+    private val history = ArrayDeque<PickupEvent>()
 
     suspend fun dashboard(screenId: String?): DashboardState {
         val screen = SchoolRoster.screenById(screenId)
         val classroom = SchoolRoster.classroomFor(screen)
         val roster = SchoolRoster.rosterFor(classroom.groupId)
         val rosterIds = roster.map { it.id }.toSet()
-        val rows = mutex.withLock {
-            if (pickups.isEmpty()) seedLocked()
-            pickups.values.toList()
-        }
+        val rows = mutex.withLock { pickups.values.toList() }
         val visible = if (rosterIds.isNotEmpty()) {
             rows.filter { it.childId in rosterIds }
-        } else if (classroom.groupId.endsWith("-2-a")) {
-            rows.filter { it.grade.contains("2º") && it.group.contains("A") && it.childId != "daniela" }
         } else {
             emptyList()
         }
         return DashboardState(
-            classroom = classroom.copy(totalStudents = if (roster.isNotEmpty()) roster.size else classroom.totalStudents),
+            classroom = classroom.copy(totalStudents = roster.size),
             pickups = visible,
             roster = roster
         )
     }
 
-    suspend fun snapshot(): List<PickupEntry> = dashboard(null).pickups
+    suspend fun forChildren(childIds: List<String>): List<PickupEntry> = mutex.withLock {
+        val wanted = childIds.toSet()
+        pickups.values.filter { it.childId in wanted }
+    }
 
-    suspend fun notifyPickup(request: NotifyPickupRequest): List<PickupEntry> = mutex.withLock {
-        if (pickups.isEmpty()) seedLocked()
-        request.children.forEach { child ->
-            val existing = pickups[child.id]
-            pickups[child.id] = PickupEntry(
-                childId = child.id,
-                firstName = child.firstName,
-                lastName = child.lastName,
-                initials = child.initials,
-                grade = child.grade,
-                group = child.group,
-                teacher = child.teacher,
-                classroom = child.classroom,
-                responsibleName = request.responsibleName,
-                etaMinutes = request.etaMinutes,
-                arrived = false,
-                action = existing?.action ?: TeacherAction.PREPARAR.name,
-                fromParentApp = true
-            )
+    suspend fun history(): List<PickupEvent> = mutex.withLock { history.toList() }
+
+    suspend fun notifyPickup(request: NotifyPickupRequest): List<PickupEntry> {
+        val zones = request.children.associate { child ->
+            child.id to (SchoolRoster.groupForStudent(child.id)?.zoneName.orEmpty())
         }
-        pickups.values.toList()
+        return mutex.withLock {
+            request.children.forEach { child ->
+                val existing = pickups[child.id]
+                val zone = zones[child.id].orEmpty()
+                pickups[child.id] = PickupEntry(
+                    childId = child.id,
+                    firstName = child.firstName,
+                    lastName = child.lastName,
+                    initials = child.initials,
+                    grade = child.grade,
+                    group = child.group,
+                    teacher = child.teacher,
+                    classroom = child.classroom,
+                    responsibleName = request.responsibleName,
+                    etaMinutes = request.etaMinutes,
+                    arrived = false,
+                    action = existing?.action ?: TeacherAction.PREPARAR.name,
+                    fromParentApp = true,
+                    verificationCode = request.verificationCode,
+                    zone = zone
+                )
+                pushHistory(
+                    childName = "${child.firstName} ${child.lastName}".trim(),
+                    groupLabel = listOf(child.grade, child.group).filter { it.isNotBlank() }.joinToString(" • "),
+                    zone = zone,
+                    responsibleName = request.responsibleName,
+                    event = "AVISO"
+                )
+            }
+            persistLocked()
+            pickups.values.toList()
+        }
+    }
+
+    suspend fun restore() {
+        val raw = RecogeYaDb.get("pickups") ?: return
+        val snapshot = runCatching {
+            RecogeYaDb.json.decodeFromString(PickupSnapshot.serializer(), raw)
+        }.getOrNull() ?: return
+        mutex.withLock {
+            pickups.clear()
+            snapshot.pickups.forEach { pickups[it.childId] = it }
+            history.clear()
+            snapshot.history.forEach { history.addLast(it) }
+        }
+    }
+
+    private fun persistLocked() {
+        RecogeYaDb.put(
+            "pickups",
+            RecogeYaDb.json.encodeToString(
+                PickupSnapshot.serializer(),
+                PickupSnapshot(pickups = pickups.values.toList(), history = history.toList())
+            )
+        )
     }
 
     suspend fun setAction(childId: String, action: String): PickupEntry? = mutex.withLock {
         val current = pickups[childId] ?: return@withLock null
-        pickups[childId] = current.copy(action = action)
+        val normalized = action.trim().uppercase()
+        pickups[childId] = current.copy(action = normalized)
+        pushHistory(
+            childName = current.fullName,
+            groupLabel = listOf(current.grade, current.group).filter { it.isNotBlank() }.joinToString(" • "),
+            zone = current.zone,
+            responsibleName = current.responsibleName,
+            event = normalized
+        )
+        persistLocked()
         pickups[childId]
     }
 
     suspend fun setArrived(childId: String, arrived: Boolean, etaMinutes: Int): PickupEntry? = mutex.withLock {
         val current = pickups[childId] ?: return@withLock null
-        pickups[childId] = current.copy(arrived = arrived, etaMinutes = etaMinutes)
+        pickups[childId] = current.copy(
+            arrived = arrived,
+            etaMinutes = etaMinutes,
+            action = if (arrived) TeacherAction.LISTO.name else current.action
+        )
+        pushHistory(
+            childName = current.fullName,
+            groupLabel = listOf(current.grade, current.group).filter { it.isNotBlank() }.joinToString(" • "),
+            zone = current.zone,
+            responsibleName = current.responsibleName,
+            event = if (arrived) "LLEGADA" else "EN CAMINO"
+        )
+        persistLocked()
         pickups[childId]
     }
 
     suspend fun cancel(childId: String) = mutex.withLock {
-        val current = pickups[childId] ?: return@withLock
-        if (current.fromParentApp && childId in seededIds) {
-            seedOneLocked(childId)
-            return@withLock
-        }
-        if (current.fromParentApp) {
-            pickups.remove(childId)
-        } else if (childId in seededIds) {
-            seedOneLocked(childId)
-        }
-    }
-
-    private val seededIds = setOf("lucas", "camila")
-
-    private fun seedLocked() {
-        listOf(
-            PickupEntry("lucas", "Lucas", "Gómez", "LG", "2º Primaria", "Grupo A", "Ana Martínez", "A-12", "María Gómez López", 3, false, TeacherAction.PREPARANDO.name),
-            PickupEntry("camila", "Camila", "Torres", "CT", "2º Primaria", "Grupo A", "Ana Martínez", "A-12", "Gabriela Torres", 0, true, TeacherAction.LISTO.name),
-        ).forEach { pickups[it.childId] = it }
-    }
-
-    private fun seedOneLocked(id: String) {
-        val defaults = mapOf(
-            "lucas" to PickupEntry("lucas", "Lucas", "Gómez", "LG", "2º Primaria", "Grupo A", "Ana Martínez", "A-12", "María Gómez López", 3, false, TeacherAction.PREPARANDO.name),
-            "camila" to PickupEntry("camila", "Camila", "Torres", "CT", "2º Primaria", "Grupo A", "Ana Martínez", "A-12", "Gabriela Torres", 0, true, TeacherAction.LISTO.name),
+        val current = pickups.remove(childId) ?: return@withLock
+        pushHistory(
+            childName = current.fullName,
+            groupLabel = listOf(current.grade, current.group).filter { it.isNotBlank() }.joinToString(" • "),
+            zone = current.zone,
+            responsibleName = current.responsibleName,
+            event = "CANCELADO"
         )
-        defaults[id]?.let { pickups[id] = it }
+        persistLocked()
+    }
+
+    suspend fun updateLocation(request: LocationUpdateRequest) {
+        val destinations = request.childIds.associateWith { id ->
+            val group = SchoolRoster.groupForStudent(id)
+            val lat = group?.zoneLat
+            val lng = group?.zoneLng
+            if (lat != null && lng != null) lat to lng else null
+        }
+        mutex.withLock {
+            request.childIds.forEach { id ->
+                val current = pickups[id] ?: return@forEach
+                if (current.arrived) return@forEach
+                val dest = destinations[id]
+                val eta = if (dest != null) {
+                    val meters = Geo.distanceMeters(
+                        request.latitude,
+                        request.longitude,
+                        dest.first,
+                        dest.second
+                    )
+                    Geo.etaMinutes(meters)
+                } else {
+                    request.etaMinutes ?: current.etaMinutes
+                }
+                pickups[id] = current.copy(etaMinutes = eta)
+            }
+            persistLocked()
+        }
+    }
+
+    private fun pushHistory(
+        childName: String,
+        groupLabel: String,
+        zone: String,
+        responsibleName: String,
+        event: String
+    ) {
+        history.addFirst(
+            PickupEvent(
+                id = "evt-${System.currentTimeMillis()}-${history.size}",
+                at = Instant.now().toString(),
+                childName = childName,
+                groupLabel = groupLabel,
+                zone = zone,
+                responsibleName = responsibleName,
+                event = event
+            )
+        )
+        while (history.size > 200) history.removeLast()
     }
 }

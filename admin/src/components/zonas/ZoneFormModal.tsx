@@ -9,6 +9,13 @@ import { Modal } from "../ui/Modal"
 const fieldClass =
   "mt-1.5 w-full rounded-xl border border-app-line bg-app-bg px-3 py-2.5 text-sm text-app-text outline-none focus:border-app-primary"
 
+function parseCoord(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const value = Number(trimmed)
+  return Number.isFinite(value) ? value : null
+}
+
 export function ZoneFormModal({
   zone,
   zones,
@@ -39,6 +46,9 @@ export function ZoneFormModal({
   const [color, setColor] = useState(zone?.color ?? "blue")
   const [mapX, setMapX] = useState(String(zone?.mapX ?? 50))
   const [mapY, setMapY] = useState(String(zone?.mapY ?? 50))
+  const [latitude, setLatitude] = useState(zone?.latitude != null ? String(zone.latitude) : "")
+  const [longitude, setLongitude] = useState(zone?.longitude != null ? String(zone.longitude) : "")
+  const [locating, setLocating] = useState(false)
   const [error, setError] = useState("")
 
   function applyGuardian(id: string) {
@@ -48,6 +58,27 @@ export function ZoneFormModal({
     setResponsiblePhone(guardian.phone)
   }
 
+  function useDeviceLocation() {
+    if (!navigator.geolocation) {
+      setError("Este navegador no puede leer la ubicación.")
+      return
+    }
+    setLocating(true)
+    setError("")
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude.toFixed(6))
+        setLongitude(position.coords.longitude.toFixed(6))
+        setLocating(false)
+      },
+      () => {
+        setLocating(false)
+        setError("No se pudo leer la ubicación de este dispositivo.")
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    )
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
     const cap = Number(capacity)
@@ -55,8 +86,22 @@ export function ZoneFormModal({
     const usage = Number(usagePct)
     const x = Number(mapX)
     const y = Number(mapY)
+    const lat = parseCoord(latitude)
+    const lng = parseCoord(longitude)
     if (!Number.isFinite(cap) || cap < 1) {
       setError("La capacidad debe ser mayor a 0.")
+      return
+    }
+    if ((lat == null) !== (lng == null)) {
+      setError("Escribe latitud y longitud, o déjalas vacías.")
+      return
+    }
+    if (lat != null && (lat < -90 || lat > 90)) {
+      setError("La latitud debe estar entre -90 y 90.")
+      return
+    }
+    if (lng != null && (lng < -180 || lng > 180)) {
+      setError("La longitud debe estar entre -180 y 180.")
       return
     }
     const result = onSave(
@@ -78,6 +123,8 @@ export function ZoneFormModal({
         mapX: Number.isFinite(x) ? x : 50,
         mapY: Number.isFinite(y) ? y : 50,
         color,
+        latitude: lat,
+        longitude: lng,
       },
       zone?.id,
     )
@@ -90,7 +137,7 @@ export function ZoneFormModal({
         <div className="grid gap-4 sm:grid-cols-[1fr_80px]">
           <label className="text-sm font-semibold">
             Nombre
-            <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="Zona A" autoFocus />
+            <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="Nombre de la zona" autoFocus />
           </label>
           <label className="text-sm font-semibold">
             Letra
@@ -101,6 +148,27 @@ export function ZoneFormModal({
           Ubicación
           <input className={fieldClass} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Entrada principal del colegio" />
         </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-semibold">
+            Latitud GPS
+            <input className={fieldClass} value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="19.432608" inputMode="decimal" />
+          </label>
+          <label className="text-sm font-semibold">
+            Longitud GPS
+            <input className={fieldClass} value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-99.133209" inputMode="decimal" />
+          </label>
+        </div>
+        <p className="text-xs text-app-muted">
+          Opcional. Con estas coordenadas el padre comparte distancia y tiempo reales solo mientras dura la recogida.
+        </p>
+        <button
+          type="button"
+          onClick={useDeviceLocation}
+          disabled={locating}
+          className="justify-self-start rounded-xl border border-app-line px-3 py-2 text-sm font-semibold hover:bg-app-card-hover disabled:opacity-60"
+        >
+          {locating ? "Leyendo ubicación…" : "Usar ubicación de este dispositivo"}
+        </button>
         <label className="text-sm font-semibold">
           Descripción
           <input className={fieldClass} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Acceso principal" />

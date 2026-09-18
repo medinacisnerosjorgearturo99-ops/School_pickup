@@ -4,7 +4,7 @@ import type { ClassroomScreen, GradeGroup, SchoolState } from "../types/school"
 
 export function pairingCodeFor(classroom: string) {
   const clean = classroom.replaceAll("-", "").replaceAll(" ", "").toUpperCase()
-  return `CSI-${clean || "TV"}`
+  return `TV-${clean || "01"}`
 }
 
 export function screenFromGroup(group: GradeGroup, online = true): ClassroomScreen {
@@ -26,7 +26,7 @@ export function ensureScreens(groups: GradeGroup[], screens: ClassroomScreen[]):
   }))
   const extras = groups
     .filter((group) => !repaired.some((screen) => screen.id === group.screenId || screen.groupId === group.id))
-    .map((group) => screenFromGroup(group, group.cycleId.includes("2026")))
+    .map((group) => screenFromGroup(group, group.status === "activo"))
   return extras.length === 0 ? repaired : [...repaired, ...extras]
 }
 
@@ -47,6 +47,9 @@ export interface SchoolSyncPayload {
     classroom: string
     teacherName: string
     zoneName: string
+    zonePhone: string
+    zoneLat: number | null
+    zoneLng: number | null
   }>
   students: Array<{
     id: string
@@ -56,13 +59,23 @@ export interface SchoolSyncPayload {
     groupId: string
     status: string
     guardianName: string
+    guardianIds: string[]
+  }>
+  guardians: Array<{
+    id: string
+    name: string
+    email: string
+    password: string
+    phone: string
+    relation: string
+    kind: string
   }>
 }
 
 export function buildSchoolSync(school: SchoolState, cycleId: string): SchoolSyncPayload {
   const teacherById = new Map(school.teachers.map((teacher) => [teacher.id, teacherName(teacher.firstName, teacher.lastName)]))
-  const zoneById = new Map(school.zones.map((zone) => [zone.id, zone.name]))
-  const guardianById = new Map(school.guardians.map((guardian) => [guardian.id, guardian.name]))
+  const zoneById = new Map(school.zones.map((zone) => [zone.id, zone]))
+  const guardianById = new Map(school.guardians.map((guardian) => [guardian.id, guardian]))
   const groups = school.groups.filter((group) => group.cycleId === cycleId && group.status === "activo")
   const groupIds = new Set(groups.map((group) => group.id))
   const screens = school.screens
@@ -82,14 +95,20 @@ export function buildSchoolSync(school: SchoolState, cycleId: string): SchoolSyn
   return {
     schoolName: school.schoolName,
     screens,
-    groups: groups.map((group) => ({
-      id: group.id,
-      grade: group.grade,
-      letter: group.letter,
-      classroom: group.classroom,
-      teacherName: teacherById.get(group.teacherId) ?? "Sin profesor",
-      zoneName: zoneById.get(group.zoneId) ?? "Sin zona",
-    })),
+    groups: groups.map((group) => {
+      const zone = zoneById.get(group.zoneId)
+      return {
+        id: group.id,
+        grade: group.grade,
+        letter: group.letter,
+        classroom: group.classroom,
+        teacherName: teacherById.get(group.teacherId) ?? "Sin profesor",
+        zoneName: zone?.name ?? "Sin zona",
+        zonePhone: zone?.responsiblePhone ?? "",
+        zoneLat: zone?.latitude ?? null,
+        zoneLng: zone?.longitude ?? null,
+      }
+    }),
     students: school.students
       .filter((student) => groupIds.has(student.groupId))
       .map((student) => ({
@@ -99,7 +118,21 @@ export function buildSchoolSync(school: SchoolState, cycleId: string): SchoolSyn
         initials: studentInitials(student),
         groupId: student.groupId,
         status: student.status,
-        guardianName: student.guardianIds.map((id) => guardianById.get(id)).find(Boolean) ?? "",
+        guardianName: student.guardianIds.map((id) => guardianById.get(id)?.name).find(Boolean) ?? "",
+        guardianIds: student.guardianIds,
+      })),
+    guardians: school.guardians
+      .filter((guardian) =>
+        school.students.some((student) => groupIds.has(student.groupId) && student.guardianIds.includes(guardian.id)),
+      )
+      .map((guardian) => ({
+        id: guardian.id,
+        name: guardian.name,
+        email: guardian.email,
+        password: guardian.password ?? "",
+        phone: guardian.phone,
+        relation: guardian.relation,
+        kind: guardian.kind,
       })),
   }
 }
@@ -111,4 +144,25 @@ export async function publishSchoolSync(payload: SchoolSyncPayload) {
     body: JSON.stringify(payload),
   })
   if (!response.ok) throw new Error("No se pudo sincronizar con el servidor de TV.")
+}
+
+export async function fetchAdminSchool(): Promise<SchoolState | null> {
+  try {
+    const response = await fetch("/api/school/admin")
+    if (response.status === 204 || !response.ok) return null
+    const data = (await response.json()) as SchoolState
+    if (!data || typeof data.schoolName !== "string") return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+export async function persistAdminSchool(school: SchoolState) {
+  const response = await fetch("/api/school/admin", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(school),
+  })
+  if (!response.ok) throw new Error("No se pudo guardar en la base de datos.")
 }

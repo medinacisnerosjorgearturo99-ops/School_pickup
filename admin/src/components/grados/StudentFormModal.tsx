@@ -32,7 +32,7 @@ export function StudentFormModal({
             className={fieldClass}
             value={firstName}
             onChange={(event) => setFirstName(event.target.value)}
-            placeholder="Lucas"
+            placeholder="Nombre"
             autoFocus
           />
         </label>
@@ -42,7 +42,7 @@ export function StudentFormModal({
             className={fieldClass}
             value={lastName}
             onChange={(event) => setLastName(event.target.value)}
-            placeholder="Gómez"
+            placeholder="Apellidos"
           />
         </label>
         {error ? <p className="text-sm font-medium text-app-danger">{error}</p> : null}

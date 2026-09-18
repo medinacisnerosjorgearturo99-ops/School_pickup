@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import com.recogeaya.padres.data.Child
 import com.recogeaya.padres.data.ResponsibleKind
 import com.recogeaya.padres.data.ResponsiblePerson
-import com.recogeaya.padres.data.SampleData
 import com.recogeaya.padres.ui.components.AppCard
 import com.recogeaya.padres.ui.components.BackLink
 import com.recogeaya.padres.ui.components.FilledInitialsAvatar
@@ -237,8 +236,8 @@ private fun AddTemporaryDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
-    var name by remember { mutableStateOf("Patricia Pérez") }
-    var relation by remember { mutableStateOf("Tía") }
+    var name by remember { mutableStateOf("") }
+    var relation by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Responsable temporal") },
@@ -282,9 +281,9 @@ private fun AddTemporaryDialog(
 private fun ResponsiblePreview() {
     RecogeYaTheme {
         ResponsiblePickerScreen(
-            selectedChildren = SampleData.children.take(2),
-            people = SampleData.authorizedPeople,
-            selectedId = "sofia",
+            selectedChildren = emptyList(),
+            people = emptyList(),
+            selectedId = "",
             onSelect = {},
             onAddTemporary = { _, _ -> },
             onSave = {},

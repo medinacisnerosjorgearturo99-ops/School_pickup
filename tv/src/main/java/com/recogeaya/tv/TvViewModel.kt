@@ -19,36 +19,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val fallbackScreens = listOf(
-    "k-a" to Triple("Kinder", "A", "K-01"),
-    "k-b" to Triple("Kinder", "B", "K-03"),
-    "1-a" to Triple("1º Primaria", "A", "A-01"),
-    "1-b" to Triple("1º Primaria", "B", "A-02"),
-    "1-c" to Triple("1º Primaria", "C", "A-03"),
-    "2-a" to Triple("2º Primaria", "A", "A-12"),
-    "2-b" to Triple("2º Primaria", "B", "A-13"),
-    "2-c" to Triple("2º Primaria", "C", "A-14"),
-    "3-a" to Triple("3º Primaria", "A", "B-01"),
-    "3-b" to Triple("3º Primaria", "B", "B-02"),
-    "4-a" to Triple("4º Primaria", "A", "B-11"),
-    "4-b" to Triple("4º Primaria", "B", "B-12"),
-    "5-a" to Triple("5º Primaria", "A", "C-01"),
-    "5-b" to Triple("5º Primaria", "B", "C-02"),
-    "5-c" to Triple("5º Primaria", "C", "C-05"),
-    "6-a" to Triple("6º Primaria", "A", "C-11"),
-    "6-b" to Triple("6º Primaria", "B", "C-12"),
-    "6-c" to Triple("6º Primaria", "C", "C-13"),
-).map { (id, info) ->
-    val (grade, letter, classroom) = info
-    TvScreenOption(
-        id = "scr-ciclo-2026-$id",
-        name = "Pantalla $classroom",
-        pairingCode = "CSI-${classroom.replace("-", "")}",
-        groupLabel = "$grade • Grupo $letter",
-        classroom = classroom
-    )
-}.sortedBy { if (it.id.contains("-2-a")) 0 else 1 }
-
 data class TvUiState(
     val dashboard: TvDashboardState = TvDashboardState(),
     val clock: String = "--:--",
@@ -57,7 +27,7 @@ data class TvUiState(
     val pairing: Boolean = false,
     val pairingError: String? = null,
     val pairingBusy: Boolean = false,
-    val screens: List<TvScreenOption> = fallbackScreens
+    val screens: List<TvScreenOption> = emptyList()
 )
 
 class TvViewModel(application: Application) : AndroidViewModel(application) {
@@ -82,9 +52,9 @@ class TvViewModel(application: Application) : AndroidViewModel(application) {
             while (isActive) {
                 if (_ui.value.pairing) {
                     val list = withContext(Dispatchers.IO) {
-                        runCatching { TvApi.fetchScreens() }.getOrNull().orEmpty()
+                        runCatching { TvApi.fetchScreens() }.getOrNull()
                     }
-                    if (list.isNotEmpty()) {
+                    if (list != null) {
                         _ui.value = _ui.value.copy(screens = list, connected = true)
                     }
                 } else {
@@ -97,13 +67,51 @@ class TvViewModel(application: Application) : AndroidViewModel(application) {
                         connected = remote != null
                     )
                 }
-                delay(1500)
+                delay(1000)
             }
         }
     }
 
     fun showPairing() {
         _ui.value = _ui.value.copy(pairing = true, pairingError = null, pairingBusy = false)
+        viewModelScope.launch {
+            val list = withContext(Dispatchers.IO) {
+                runCatching { TvApi.fetchScreens() }.getOrNull()
+            }
+            if (list != null) {
+                _ui.value = _ui.value.copy(screens = list, connected = true)
+            }
+        }
+    }
+
+    fun pairWithCode(raw: String) {
+        if (_ui.value.pairingBusy) return
+        val code = raw.trim()
+        if (code.isBlank()) {
+            _ui.value = _ui.value.copy(pairingError = "Escribe el código de la pantalla (el de Dirección).")
+            return
+        }
+        viewModelScope.launch {
+            _ui.value = _ui.value.copy(pairingBusy = true, pairingError = null)
+            val remote = withContext(Dispatchers.IO) {
+                runCatching { TvApi.pair(code) }.getOrNull()
+            }
+            applyPairing(remote, fallbackId = null)
+        }
+    }
+
+    fun setAction(childId: String, action: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { TvApi.setAction(childId, action) }
+        }
+        val dashboard = _ui.value.dashboard
+        _ui.value = _ui.value.copy(
+            dashboard = dashboard.copy(
+                pickups = dashboard.pickups.map { pickup ->
+                    if (pickup.childId == childId) pickup.copy(action = action) else pickup
+                }
+            )
+        )
     }
 
     fun pairWith(screen: TvScreenOption) {
@@ -114,23 +122,28 @@ class TvViewModel(application: Application) : AndroidViewModel(application) {
                 runCatching { TvApi.fetchState(screen.id) }.getOrNull()
                     ?: runCatching { TvApi.pair(screen.pairingCode) }.getOrNull()
             }
-            if (remote == null) {
-                _ui.value = _ui.value.copy(
-                    pairingBusy = false,
-                    pairingError = "No se pudo vincular. Revisa que el servidor esté en :8080."
-                )
-                return@launch
-            }
-            persist(remote.classroom.screenId.ifBlank { screen.id })
-            _ui.value = _ui.value.copy(
-                dashboard = remote,
-                connected = true,
-                screenId = remote.classroom.screenId.ifBlank { screen.id },
-                pairing = false,
-                pairingBusy = false,
-                pairingError = null
-            )
+            applyPairing(remote, fallbackId = screen.id)
         }
+    }
+
+    private fun applyPairing(remote: TvDashboardState?, fallbackId: String?) {
+        if (remote == null) {
+            _ui.value = _ui.value.copy(
+                pairingBusy = false,
+                pairingError = "No se encontró ese salón. Revisa el código en Dirección y que el servidor esté en :8080."
+            )
+            return
+        }
+        val screenId = remote.classroom.screenId.ifBlank { fallbackId.orEmpty() }
+        if (screenId.isNotBlank()) persist(screenId)
+        _ui.value = _ui.value.copy(
+            dashboard = remote,
+            connected = true,
+            screenId = screenId.ifBlank { _ui.value.screenId },
+            pairing = false,
+            pairingBusy = false,
+            pairingError = null
+        )
     }
 
     private fun persist(screenId: String) {

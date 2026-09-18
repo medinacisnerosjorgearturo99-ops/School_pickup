@@ -1,9 +1,12 @@
 package com.recogeaya.tv.sync
 
+import android.os.Build
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 @Serializable
@@ -18,7 +21,8 @@ data class TvPickup(
     val action: String = "PREPARAR",
     val arrived: Boolean = false,
     val etaMinutes: Int? = null,
-    val fromParentApp: Boolean = false
+    val fromParentApp: Boolean = false,
+    val verificationCode: String = ""
 ) {
     val fullName: String get() = "$firstName $lastName".trim()
     val gradeGroup: String
@@ -27,15 +31,15 @@ data class TvPickup(
 
 @Serializable
 data class TvClassroom(
-    val school: String = "Colegio San Ignacio",
-    val grade: String = "2º Primaria • Grupo A",
-    val teacher: String = "Prof. Ana Martínez",
-    val classroom: String = "Salón A-12",
-    val zone: String = "Zona A",
-    val totalStudents: Int = 26,
-    val screenId: String = "scr-ciclo-2026-2-a",
-    val groupId: String = "ciclo-2026-2-a",
-    val pairingCode: String = "CSI-A12"
+    val school: String = "Escuela",
+    val grade: String = "Sin grupo",
+    val teacher: String = "Sin profesor",
+    val classroom: String = "Sin salón",
+    val zone: String = "Sin zona",
+    val totalStudents: Int = 0,
+    val screenId: String = "",
+    val groupId: String = "",
+    val pairingCode: String = ""
 )
 
 @Serializable
@@ -71,7 +75,7 @@ data class TvScreensResponse(
 )
 
 object TvApi {
-    const val BASE_URL = "http://10.0.2.2:8080"
+    val BASE_URL: String = if (isEmulator()) "http://10.0.2.2:8080" else "http://10.76.67.180:8080"
 
     private val json = Json { ignoreUnknownKeys = true }
     private val client = OkHttpClient.Builder()
@@ -93,13 +97,22 @@ object TvApi {
         return getDashboard("$BASE_URL/api/tv/pair/$encoded")
     }
 
-    fun fetchScreens(): List<TvScreenOption> {
+    fun fetchScreens(): List<TvScreenOption>? {
         val request = Request.Builder().url("$BASE_URL/api/tv/screens").get().build()
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return emptyList()
+            if (!response.isSuccessful) return null
             val text = response.body?.string() ?: return emptyList()
             return json.decodeFromString<TvScreensResponse>(text).screens
         }
+    }
+
+    fun setAction(childId: String, action: String) {
+        val media = "application/json; charset=utf-8".toMediaType()
+        val request = Request.Builder()
+            .url("$BASE_URL/api/pickups/$childId/action")
+            .post("""{"action":"$action"}""".toRequestBody(media))
+            .build()
+        client.newCall(request).execute().close()
     }
 
     private fun getDashboard(url: String): TvDashboardState? {
@@ -114,3 +127,25 @@ object TvApi {
 
 fun TvPickup.isPrepareNow(): Boolean =
     arrived || action == "PREPARANDO" || action == "LISTO" || (etaMinutes != null && etaMinutes <= 8)
+
+fun TvPickup.arrivalLabel(): String = when {
+    arrived || etaMinutes == 0 -> "HA LLEGADO"
+    etaMinutes != null -> "A $etaMinutes MIN"
+    else -> "EN CAMINO"
+}
+
+fun TvPickup.hasArrived(): Boolean = arrived || etaMinutes == 0
+
+private fun isEmulator(): Boolean {
+    val fingerprint = Build.FINGERPRINT
+    val model = Build.MODEL
+    val hardware = Build.HARDWARE
+    val product = Build.PRODUCT
+    return fingerprint.startsWith("generic") ||
+        fingerprint.contains("emulator") ||
+        model.contains("Emulator") ||
+        model.contains("Android SDK") ||
+        hardware.contains("goldfish") ||
+        hardware.contains("ranchu") ||
+        product.contains("sdk")
+}

@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.sp
 import com.recogeaya.padres.data.Child
 import com.recogeaya.padres.data.ParentProfile
 import com.recogeaya.padres.data.PickupActivityItem
-import com.recogeaya.padres.data.SampleData
 import com.recogeaya.padres.data.School
 import com.recogeaya.padres.ui.components.AppCard
 import com.recogeaya.padres.ui.components.ChildAvatar
@@ -122,32 +121,56 @@ fun HomeScreen(
         }
 
         Spacer(Modifier.height(20.dp))
-        childrenBySchool.forEach { (school, kids) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.School, null, tint = RecogeYaColors.Primary, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(school.name, fontWeight = FontWeight.Bold, fontSize = dimens.section)
+        if (childrenBySchool.isEmpty()) {
+            AppCard {
+                Column(Modifier.padding(LocalAppDimens.current.cardPad)) {
+                    Text("Sin alumnos asignados", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Cuando la escuela dé de alta tu correo como responsable, aquí aparecerán los niños a tu cargo.",
+                        color = RecogeYaColors.TextMuted,
+                        fontSize = 13.sp
+                    )
+                }
             }
-            Spacer(Modifier.height(10.dp))
-            kids.forEach { child ->
-                SelectableChildCard(
-                    child = child,
-                    selected = child.id in selectedIds,
-                    onToggle = { onToggleChild(child.id) }
-                )
+            Spacer(Modifier.height(16.dp))
+        } else {
+            childrenBySchool.forEach { (school, kids) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.School, null, tint = RecogeYaColors.Primary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(school.name, fontWeight = FontWeight.Bold, fontSize = dimens.section)
+                }
                 Spacer(Modifier.height(10.dp))
+                kids.forEach { child ->
+                    SelectableChildCard(
+                        child = child,
+                        selected = child.id in selectedIds,
+                        onToggle = { onToggleChild(child.id) }
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+                Spacer(Modifier.height(8.dp))
             }
-            Spacer(Modifier.height(8.dp))
         }
 
         Text("Actividad reciente", fontWeight = FontWeight.Bold, fontSize = dimens.section)
         Spacer(Modifier.height(12.dp))
         AppCard {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                activities.forEachIndexed { index, item ->
-                    ActivityRow(item)
-                    if (index != activities.lastIndex) {
-                        HorizontalDivider(color = RecogeYaColors.Border)
+            if (activities.isEmpty()) {
+                Text(
+                    "Aún no hay entregas registradas.",
+                    color = RecogeYaColors.TextMuted,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(16.dp)
+                )
+            } else {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    activities.forEachIndexed { index, item ->
+                        ActivityRow(item)
+                        if (index != activities.lastIndex) {
+                            HorizontalDivider(color = RecogeYaColors.Border)
+                        }
                     }
                 }
             }
@@ -256,10 +279,10 @@ private fun ActivityRow(item: PickupActivityItem) {
 private fun HomePreview() {
     RecogeYaTheme {
         HomeScreen(
-            parent = SampleData.account.profile,
-            childrenBySchool = SampleData.childrenGroupedBySchool(),
-            selectedIds = setOf("lucas"),
-            activities = SampleData.activities,
+            parent = ParentProfile(name = "Responsable", initials = "R"),
+            childrenBySchool = emptyList(),
+            selectedIds = emptySet(),
+            activities = emptyList(),
             onToggleChild = {},
             onPickupClick = {},
             onLogout = {}

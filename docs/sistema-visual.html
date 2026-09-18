@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>RecogeYa · Sistema visual</title>
+  <style>
+    @page { size: A4; margin: 12mm 12mm 14mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Inter, Roboto, sans-serif;
+      color: #111827;
+      font-size: 9.5pt;
+      line-height: 1.4;
+    }
+    h1 { font-size: 20pt; margin: 0 0 4px; letter-spacing: -0.03em; }
+    h2 { font-size: 13pt; margin: 0 0 8px; }
+    h3 { font-size: 10pt; margin: 14px 0 6px; color: #2152FF; }
+    p { margin: 0 0 8px; }
+    .muted { color: #6B7280; }
+    .brand {
+      display: inline-block; background: #2152FF; color: #fff; font-weight: 700;
+      font-size: 8pt; letter-spacing: .14em; padding: 3px 9px; border-radius: 5px; margin-bottom: 8px;
+    }
+    .cover { border-bottom: 3px solid #2152FF; padding-bottom: 12px; margin-bottom: 14px; }
+    .page { page-break-before: always; }
+    .page:first-child { page-break-before: auto; }
+
+    .scheme { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 8px 0 12px; }
+    .pair { display: grid; grid-template-columns: 1.35fr 0.85fr; min-height: 48px; border-radius: 8px; overflow: hidden; }
+    .cell { padding: 8px 10px; display: flex; flex-direction: column; justify-content: center; min-height: 48px; }
+    .cell .role { font-weight: 700; font-size: 9pt; }
+    .cell .hex { font-family: Consolas, "Courier New", monospace; font-size: 7.5pt; opacity: .9; margin-top: 2px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    th, td { text-align: left; padding: 5px 7px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+    th { background: #F7F8FC; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .04em; color: #6B7280; }
+    .chip {
+      display: inline-block; background: #E8EEFF; color: #1B45D6; font-size: 8pt; font-weight: 600;
+      padding: 2px 8px; border-radius: 999px; margin: 0 5px 6px 0;
+    }
+    .note {
+      background: #EAF1FF; border-left: 3px solid #2152FF; padding: 7px 10px;
+      border-radius: 0 7px 7px 0; font-size: 8.5pt; margin: 0 0 10px;
+    }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .foot { margin-top: 10px; font-size: 8pt; color: #6B7280; }
+  </style>
+</head>
+<body>
+
+  <div class="cover">
+    <div class="brand">RECOGEYA</div>
+    <h1>Sistema visual</h1>
+    <p class="muted">Roles de color tipo Material 3 · tipografía · iconos · espaciado · mobile, TV y web.</p>
+  </div>
+  <p class="note">
+    Cómo leer la lámina: el recuadro grande es el color del rol. El de al lado es <strong>On …</strong>: el color del texto o icono que va encima.
+    <strong>Container</strong> es la versión suave (fondos de chip, avatar, banner). El primario de marca en las tres superficies es <strong>#2152FF</strong>.
+  </p>
+
+  <!-- MOBILE -->
+  <section>
+    <h2>Mobile · app de padres · Light Theme</h2>
+    <span class="chip">Roboto · Material 3</span>
+    <span class="chip">Iconos sólidos (Filled)</span>
+    <span class="chip">Sin 3D</span>
+
+    <div class="scheme">
+      <div class="pair">
+        <div class="cell" style="background:#2152FF;color:#FFFFFF"><span class="role">Primary</span><span class="hex">#2152FF</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#2152FF;border:1px solid #E5E7EB;border-left:none"><span class="role">On Primary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#E8EEFF;color:#1B45D6"><span class="role">Primary Container</span><span class="hex">#E8EEFF</span></div>
+        <div class="cell" style="background:#1B45D6;color:#E8EEFF"><span class="role">On Primary Container</span><span class="hex">#1B45D6</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#1B45D6;color:#FFFFFF"><span class="role">Secondary</span><span class="hex">#1B45D6</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#1B45D6;border:1px solid #E5E7EB;border-left:none"><span class="role">On Secondary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#EAF1FF;color:#1B45D6"><span class="role">Secondary Container</span><span class="hex">#EAF1FF</span></div>
+        <div class="cell" style="background:#1B45D6;color:#EAF1FF"><span class="role">On Secondary Container</span><span class="hex">#1B45D6</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#16A34A;color:#FFFFFF"><span class="role">Tertiary</span><span class="hex">#16A34A</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#16A34A;border:1px solid #E5E7EB;border-left:none"><span class="role">On Tertiary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#E7F8EF;color:#16A34A"><span class="role">Tertiary Container</span><span class="hex">#E7F8EF</span></div>
+        <div class="cell" style="background:#16A34A;color:#E7F8EF"><span class="role">On Tertiary Container</span><span class="hex">#16A34A</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#DC2626;color:#FFFFFF"><span class="role">Error</span><span class="hex">#DC2626</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#DC2626;border:1px solid #E5E7EB;border-left:none"><span class="role">On Error</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#FEE2E2;color:#DC2626"><span class="role">Error Container</span><span class="hex">#FEE2E2</span></div>
+        <div class="cell" style="background:#7F1D1D;color:#FEE2E2"><span class="role">On Error Container</span><span class="hex">#7F1D1D</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#F7F8FC;color:#111827;border:1px solid #E5E7EB"><span class="role">Background</span><span class="hex">#F7F8FC</span></div>
+        <div class="cell" style="background:#111827;color:#F7F8FC"><span class="role">On Background</span><span class="hex">#111827</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#FFFFFF;color:#111827;border:1px solid #E5E7EB"><span class="role">Surface</span><span class="hex">#FFFFFF</span></div>
+        <div class="cell" style="background:#111827;color:#FFFFFF"><span class="role">On Surface</span><span class="hex">#111827</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#E5E7EB;color:#111827"><span class="role">Outline</span><span class="hex">#E5E7EB</span></div>
+        <div class="cell" style="background:#6B7280;color:#FFFFFF"><span class="role">On Surface Variant</span><span class="hex">#6B7280</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#F3F4F6;color:#6B7280"><span class="role">Surface Variant</span><span class="hex">#F3F4F6</span></div>
+        <div class="cell" style="background:#6B7280;color:#F3F4F6"><span class="role">On Surface Variant</span><span class="hex">#6B7280</span></div>
+      </div>
+    </div>
+    <p class="muted">Advertencia (no es rol MD3, pero se usa): <strong>#D97706</strong> / contenedor <strong>#FFF6E0</strong> · banner temporal <strong>#FFF4CC</strong>.</p>
+
+    <h3>Tipografía</h3>
+    <p>Roboto (default de Material 3). No hay Google Fonts. Pesos Regular, SemiBold y Bold.</p>
+    <table>
+      <thead><tr><th>Estilo</th><th>Tamaño</th><th>Peso</th><th>Uso</th></tr></thead>
+      <tbody>
+        <tr><td>Título</td><td>24 / 28 / 32 sp</td><td>Bold</td><td>Según ancho &lt;360 / 411 / ≥600</td></tr>
+        <tr><td>Sección</td><td>18 / 20 / 22 sp</td><td>Bold</td><td>Escuela, bloques</td></tr>
+        <tr><td>Nombre</td><td>16 sp</td><td>Bold</td><td>Alumno</td></tr>
+        <tr><td>Cuerpo</td><td>14 / 13 / 12 sp</td><td>Regular</td><td>Ayudas</td></tr>
+        <tr><td>CTA</td><td>14–16 sp</td><td>Bold</td><td>Botón inferior</td></tr>
+        <tr><td>Código QR</td><td>40 sp</td><td>Bold</td><td>Responsable temporal</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Iconos · Material Icons Filled = sólidos</h3>
+    <p>No hay outline ni 3D. El QR es un dibujo vectorial, no un set. Tamaños 14–40 dp.</p>
+    <table>
+      <thead><tr><th>Iconos</th><th>Tipo</th><th>Pantalla</th></tr></thead>
+      <tbody>
+        <tr><td>School, Email, Lock, Visibility</td><td>Sólido</td><td>Login</td></tr>
+        <tr><td>DirectionsCar, Logout, Person, Home, Check, VerifiedUser</td><td>Sólido</td><td>Home</td></tr>
+        <tr><td>LocationOn, PersonAdd, Share, CheckCircle, Info</td><td>Sólido</td><td>Recogida / QR</td></tr>
+        <tr><td>Schedule, Phone, Shield</td><td>Sólido</td><td>Seguimiento</td></tr>
+        <tr><td>ArrowBack</td><td>Sólido (AutoMirrored)</td><td>Atrás</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Espaciado</h3>
+    <table>
+      <thead><tr><th>Medida</th><th>&lt;360</th><th>Teléfono</th><th>≥600</th></tr></thead>
+      <tbody>
+        <tr><td>Padding pantalla</td><td>16 dp</td><td>20 dp</td><td>32 dp</td></tr>
+        <tr><td>Padding tarjeta</td><td>14 dp</td><td>16 dp</td><td>20 dp</td></tr>
+        <tr><td>Radio tarjeta</td><td>16 dp</td><td>18 dp</td><td>20 dp</td></tr>
+        <tr><td>Botón CTA</td><td colspan="3">alto 54 dp · radio 16 dp</td></tr>
+        <tr><td>Avatares / check</td><td colspan="3">44 / 42 dp · checkbox 26 dp</td></tr>
+        <tr><td>Gaps</td><td colspan="3">8 / 10 / 12 / 16 / 20 dp · ancho máx. 560 dp</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- TV -->
+  <section class="page">
+    <h2>TV · panel de salón · Dark Theme</h2>
+    <span class="chip">Roboto · Material 3</span>
+    <span class="chip">Filled sólidos + 1 outline</span>
+    <span class="chip">Sin 3D</span>
+    <p class="note">Pensado para verse de lejos. Secondary es el acento claro <strong>#7EA2FF</strong> para leer sobre negro. Error en TV es el ámbar de alerta (sin conexión / ETA), no hay rojo de error.</p>
+
+    <div class="scheme">
+      <div class="pair">
+        <div class="cell" style="background:#2152FF;color:#FFFFFF"><span class="role">Primary</span><span class="hex">#2152FF</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#2152FF"><span class="role">On Primary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#1A2F6B;color:#7EA2FF"><span class="role">Primary Container</span><span class="hex">#1A2F6B</span></div>
+        <div class="cell" style="background:#7EA2FF;color:#1A2F6B"><span class="role">On Primary Container</span><span class="hex">#7EA2FF</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#7EA2FF;color:#071018"><span class="role">Secondary</span><span class="hex">#7EA2FF</span></div>
+        <div class="cell" style="background:#071018;color:#7EA2FF"><span class="role">On Secondary</span><span class="hex">#071018</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#1A2F6B;color:#7EA2FF"><span class="role">Secondary Container</span><span class="hex">#1A2F6B</span></div>
+        <div class="cell" style="background:#7EA2FF;color:#1A2F6B"><span class="role">On Secondary Container</span><span class="hex">#7EA2FF</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#22C55E;color:#071018"><span class="role">Tertiary</span><span class="hex">#22C55E</span></div>
+        <div class="cell" style="background:#071018;color:#22C55E"><span class="role">On Tertiary</span><span class="hex">#071018</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#163428;color:#22C55E"><span class="role">Tertiary Container</span><span class="hex">#163428</span></div>
+        <div class="cell" style="background:#22C55E;color:#163428"><span class="role">On Tertiary Container</span><span class="hex">#22C55E</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#F59E0B;color:#071018"><span class="role">Error / alerta</span><span class="hex">#F59E0B</span></div>
+        <div class="cell" style="background:#071018;color:#F59E0B"><span class="role">On Error</span><span class="hex">#071018</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#3A2A12;color:#F59E0B"><span class="role">Error Container</span><span class="hex">#3A2A12</span></div>
+        <div class="cell" style="background:#F59E0B;color:#3A2A12"><span class="role">On Error Container</span><span class="hex">#F59E0B</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#071018;color:#F4F7FB"><span class="role">Background</span><span class="hex">#071018</span></div>
+        <div class="cell" style="background:#F4F7FB;color:#071018"><span class="role">On Background</span><span class="hex">#F4F7FB</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#101A28;color:#F4F7FB"><span class="role">Surface</span><span class="hex">#101A28</span></div>
+        <div class="cell" style="background:#F4F7FB;color:#101A28"><span class="role">On Surface</span><span class="hex">#F4F7FB</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#1D2B40;color:#8B9BB4"><span class="role">Outline</span><span class="hex">#1D2B40</span></div>
+        <div class="cell" style="background:#8B9BB4;color:#071018"><span class="role">On Surface Variant</span><span class="hex">#8B9BB4</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#182538;color:#8B9BB4"><span class="role">Surface Variant</span><span class="hex">#182538</span></div>
+        <div class="cell" style="background:#8B9BB4;color:#182538"><span class="role">On Surface Variant</span><span class="hex">#8B9BB4</span></div>
+      </div>
+    </div>
+
+    <h3>Tipografía</h3>
+    <p>Roboto. ExtraBold en reloj, stats y pills para lectura a distancia.</p>
+    <table>
+      <thead><tr><th>Estilo</th><th>Tamaño</th><th>Peso</th><th>Uso</th></tr></thead>
+      <tbody>
+        <tr><td>Reloj</td><td>32 sp</td><td>ExtraBold</td><td>Header</td></tr>
+        <tr><td>KPI</td><td>28 sp</td><td>ExtraBold</td><td>Alumnos / pendientes</td></tr>
+        <tr><td>Título overlay</td><td>26 sp</td><td>ExtraBold</td><td>Elegir salón</td></tr>
+        <tr><td>Grado / escuela</td><td>24 / 22 sp</td><td>Bold</td><td>Header</td></tr>
+        <tr><td>Sección</td><td>20 sp</td><td>ExtraBold</td><td>Preparar ahora</td></tr>
+        <tr><td>Alumno</td><td>16–17 sp</td><td>Bold</td><td>Fila</td></tr>
+        <tr><td>Pills / caps</td><td>11–12 sp</td><td>ExtraBold</td><td>HA LLEGADO</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Iconos</h3>
+    <table>
+      <thead><tr><th>Icono</th><th>Tipo</th><th>Uso</th></tr></thead>
+      <tbody>
+        <tr><td>School, Tv, Send, AccessTime, Groups, LocationOn</td><td>Sólido</td><td>Header, secciones, zona</td></tr>
+        <tr><td>ChatBubbleOutline</td><td>Contorno (solo bordes)</td><td>Comunicación</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Tamaños: logo 52 dp · overlay 56 dp · info 36 dp. Tint On Primary o Secondary sobre Primary Container.</p>
+
+    <h3>Espaciado</h3>
+    <table>
+      <thead><tr><th>Medida</th><th>Valor</th></tr></thead>
+      <tbody>
+        <tr><td>Padding pantalla / gutter</td><td>20 dp · columnas 16 dp</td></tr>
+        <tr><td>Radio panel</td><td>22 dp · overlay 28 dp</td></tr>
+        <tr><td>Padding panel / side</td><td>20 / 16 dp</td></tr>
+        <tr><td>Avatar / pills</td><td>42 dp círculo · pills 12×7 dp cápsula</td></tr>
+        <tr><td>Breakpoint</td><td>900 dp → dos columnas</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- WEB DARK -->
+  <section class="page">
+    <h2>Web · administrativo · Dark Theme (default)</h2>
+    <span class="chip">Inter 400–800</span>
+    <span class="chip">Lucide · contorno</span>
+    <span class="chip">Sin 3D</span>
+    <p class="note">Secondary aquí es el morado de profesores. Tertiary es el verde de éxito. Error es rojo, no ámbar.</p>
+
+    <div class="scheme">
+      <div class="pair">
+        <div class="cell" style="background:#2152FF;color:#FFFFFF"><span class="role">Primary</span><span class="hex">#2152FF</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#2152FF"><span class="role">On Primary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#1A2F6B;color:#3D6AFF"><span class="role">Primary Container</span><span class="hex">#1A2F6B</span></div>
+        <div class="cell" style="background:#3D6AFF;color:#1A2F6B"><span class="role">On Primary Container</span><span class="hex">#3D6AFF</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#A78BFA;color:#0A1322"><span class="role">Secondary</span><span class="hex">#A78BFA</span></div>
+        <div class="cell" style="background:#0A1322;color:#A78BFA"><span class="role">On Secondary</span><span class="hex">#0A1322</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#2A1F4A;color:#A78BFA"><span class="role">Secondary Container</span><span class="hex">#2A1F4A</span></div>
+        <div class="cell" style="background:#A78BFA;color:#2A1F4A"><span class="role">On Secondary Container</span><span class="hex">#A78BFA</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#22C55E;color:#0A1322"><span class="role">Tertiary</span><span class="hex">#22C55E</span></div>
+        <div class="cell" style="background:#0A1322;color:#22C55E"><span class="role">On Tertiary</span><span class="hex">#0A1322</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#163428;color:#22C55E"><span class="role">Tertiary Container</span><span class="hex">#163428</span></div>
+        <div class="cell" style="background:#22C55E;color:#163428"><span class="role">On Tertiary Container</span><span class="hex">#22C55E</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#F87171;color:#0A1322"><span class="role">Error</span><span class="hex">#F87171</span></div>
+        <div class="cell" style="background:#0A1322;color:#F87171"><span class="role">On Error</span><span class="hex">#0A1322</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#3F1D24;color:#F87171"><span class="role">Error Container</span><span class="hex">#3F1D24</span></div>
+        <div class="cell" style="background:#F87171;color:#3F1D24"><span class="role">On Error Container</span><span class="hex">#F87171</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#0A1322;color:#F4F7FB"><span class="role">Background</span><span class="hex">#0A1322</span></div>
+        <div class="cell" style="background:#F4F7FB;color:#0A1322"><span class="role">On Background</span><span class="hex">#F4F7FB</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#111D30;color:#F4F7FB"><span class="role">Surface</span><span class="hex">#111D30</span></div>
+        <div class="cell" style="background:#F4F7FB;color:#111D30"><span class="role">On Surface</span><span class="hex">#F4F7FB</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#1C2D45;color:#8B9BB4"><span class="role">Outline</span><span class="hex">#1C2D45</span></div>
+        <div class="cell" style="background:#8B9BB4;color:#0A1322"><span class="role">On Surface Variant</span><span class="hex">#8B9BB4</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#0C1628;color:#C5D0E0"><span class="role">Surface Variant</span><span class="hex">#0C1628</span></div>
+        <div class="cell" style="background:#8B9BB4;color:#0C1628"><span class="role">On Surface Variant</span><span class="hex">#8B9BB4</span></div>
+      </div>
+    </div>
+    <p class="muted">Ámbar de pantallas / alerta: <strong>#F59E0B</strong> · contenedor <strong>#3A2A12</strong>. Hover de tarjeta: <strong>#16263D</strong>.</p>
+
+    <h2 style="margin-top:18px">Web · administrativo · Light Theme</h2>
+    <div class="scheme">
+      <div class="pair">
+        <div class="cell" style="background:#2152FF;color:#FFFFFF"><span class="role">Primary</span><span class="hex">#2152FF</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#2152FF;border:1px solid #E4E9F2;border-left:none"><span class="role">On Primary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#E8EEFF;color:#1B45D6"><span class="role">Primary Container</span><span class="hex">#E8EEFF</span></div>
+        <div class="cell" style="background:#1B45D6;color:#E8EEFF"><span class="role">On Primary Container</span><span class="hex">#1B45D6</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#7C3AED;color:#FFFFFF"><span class="role">Secondary</span><span class="hex">#7C3AED</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#7C3AED;border:1px solid #E4E9F2;border-left:none"><span class="role">On Secondary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#F3E8FF;color:#7C3AED"><span class="role">Secondary Container</span><span class="hex">#F3E8FF</span></div>
+        <div class="cell" style="background:#7C3AED;color:#F3E8FF"><span class="role">On Secondary Container</span><span class="hex">#7C3AED</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#16A34A;color:#FFFFFF"><span class="role">Tertiary</span><span class="hex">#16A34A</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#16A34A;border:1px solid #E4E9F2;border-left:none"><span class="role">On Tertiary</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#E7F8EF;color:#16A34A"><span class="role">Tertiary Container</span><span class="hex">#E7F8EF</span></div>
+        <div class="cell" style="background:#16A34A;color:#E7F8EF"><span class="role">On Tertiary Container</span><span class="hex">#16A34A</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#DC2626;color:#FFFFFF"><span class="role">Error</span><span class="hex">#DC2626</span></div>
+        <div class="cell" style="background:#FFFFFF;color:#DC2626;border:1px solid #E4E9F2;border-left:none"><span class="role">On Error</span><span class="hex">#FFFFFF</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#FEE2E2;color:#DC2626"><span class="role">Error Container</span><span class="hex">#FEE2E2</span></div>
+        <div class="cell" style="background:#7F1D1D;color:#FEE2E2"><span class="role">On Error Container</span><span class="hex">#7F1D1D</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#F3F5FA;color:#0F172A;border:1px solid #E4E9F2"><span class="role">Background</span><span class="hex">#F3F5FA</span></div>
+        <div class="cell" style="background:#0F172A;color:#F3F5FA"><span class="role">On Background</span><span class="hex">#0F172A</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#FFFFFF;color:#0F172A;border:1px solid #E4E9F2"><span class="role">Surface</span><span class="hex">#FFFFFF</span></div>
+        <div class="cell" style="background:#0F172A;color:#FFFFFF"><span class="role">On Surface</span><span class="hex">#0F172A</span></div>
+      </div>
+
+      <div class="pair">
+        <div class="cell" style="background:#E4E9F2;color:#0F172A"><span class="role">Outline</span><span class="hex">#E4E9F2</span></div>
+        <div class="cell" style="background:#64748B;color:#FFFFFF"><span class="role">On Surface Variant</span><span class="hex">#64748B</span></div>
+      </div>
+      <div class="pair">
+        <div class="cell" style="background:#F8FAFC;color:#334155"><span class="role">Surface Variant</span><span class="hex">#F8FAFC</span></div>
+        <div class="cell" style="background:#64748B;color:#F8FAFC"><span class="role">On Surface Variant</span><span class="hex">#64748B</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page">
+    <h2>Web · tipografía, iconos y espaciado</h2>
+    <span class="chip">Inter</span>
+    <span class="chip">Lucide outline</span>
+    <span class="chip">strokeWidth 2–2.1</span>
+
+    <h3>Tipografía</h3>
+    <p>Inter (Google Fonts) 400, 500, 600, 700, 800. Letter-spacing global −0.011em. tracking-tight en H1.</p>
+    <table>
+      <thead><tr><th>Estilo</th><th>Tamaño</th><th>Peso</th><th>Uso</th></tr></thead>
+      <tbody>
+        <tr><td>H1</td><td>28 px · sm 32 px</td><td>800</td><td>Bienvenida</td></tr>
+        <tr><td>KPI</td><td>32 px</td><td>800</td><td>Stat cards</td></tr>
+        <tr><td>Escuela</td><td>15 px</td><td>700</td><td>Sidebar</td></tr>
+        <tr><td>Nav / botones</td><td>14 px</td><td>600</td><td>Menú</td></tr>
+        <tr><td>Cuerpo / muted</td><td>14 / 12 px</td><td>400–500</td><td>Ayudas</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Iconos · Lucide = contorno (solo bordes)</h3>
+    <p>No hay iconos sólidos ni 3D. El mapa de campus es SVG propio. Tamaños 11–22 px. En nav: 18 px y stroke 2.1.</p>
+    <table>
+      <thead><tr><th>Iconos</th><th>Tipo</th><th>Uso</th></tr></thead>
+      <tbody>
+        <tr><td>Home, CalendarRange, Layers, GraduationCap, Users, MapPin, Monitor, History</td><td>Contorno</td><td>Nav</td></tr>
+        <tr><td>Menu, X, Sun, Moon, UserRound, ChevronUp</td><td>Contorno</td><td>Chrome / tema / cuenta</td></tr>
+        <tr><td>Plus, Search, Filter, Upload, Pencil, Copy, Trash2</td><td>Contorno</td><td>Acciones</td></tr>
+        <tr><td>UserPlus, Cake, Phone, Mail, FileText, CalendarDays</td><td>Contorno</td><td>Alumnos / ciclos</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Espaciado</h3>
+    <table>
+      <thead><tr><th>Medida</th><th>Valor</th></tr></thead>
+      <tbody>
+        <tr><td>Sidebar</td><td>272 px</td></tr>
+        <tr><td>Main</td><td>px-4 py-6 · sm px-6 · lg px-8 py-8</td></tr>
+        <tr><td>Contenido</td><td>máx. 1180 px · gap 24 px</td></tr>
+        <tr><td>Nav item</td><td>px-3.5 py-2.5 · radius 12 px</td></tr>
+        <tr><td>Card</td><td>radius 22 px · p-5 (igual que TV)</td></tr>
+        <tr><td>KPI icon</td><td>44 px · radius 16 px</td></tr>
+        <tr><td>Avatar admin</td><td>40 px círculo</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Roles resumidos (las tres superficies)</h3>
+    <table>
+      <thead><tr><th>Rol</th><th>Qué pinta</th><th>Mobile</th><th>TV / Web oscuro</th></tr></thead>
+      <tbody>
+        <tr><td>Primary</td><td>Marca y CTA</td><td>#2152FF</td><td>#2152FF</td></tr>
+        <tr><td>On Primary</td><td>Texto/icono sobre el CTA</td><td>#FFFFFF</td><td>#FFFFFF</td></tr>
+        <tr><td>Secondary</td><td>Apoyo de marca</td><td>#1B45D6</td><td>#7EA2FF / #A78BFA</td></tr>
+        <tr><td>Tertiary</td><td>Éxito / listo</td><td>#16A34A</td><td>#22C55E</td></tr>
+        <tr><td>Error</td><td>Fallo o alerta</td><td>#DC2626</td><td>#F59E0B TV · #F87171 web</td></tr>
+        <tr><td>Background / Surface</td><td>Lienzo y tarjeta</td><td>#F7F8FC / #FFF</td><td>#0A1322 / #111D30</td></tr>
+        <tr><td>On Surface</td><td>Texto principal</td><td>#111827</td><td>#F4F7FB</td></tr>
+      </tbody>
+    </table>
+    <p class="foot">RecogeYa · sistema visual · roles MD3 mapeados desde el código de app, tv y admin.</p>
+  </section>
+</body>
+</html>

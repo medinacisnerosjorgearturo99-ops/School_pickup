@@ -9,8 +9,6 @@ import {
   Tv,
   Unplug,
   Users,
-  Wifi,
-  WifiOff,
 } from "lucide-react"
 import { useSchool } from "../context/SchoolContext"
 import { colorClass, groupTitle } from "../lib/grades"
@@ -21,13 +19,11 @@ import { Card } from "../components/ui/Card"
 import { MenuSelect } from "../components/ui/MenuSelect"
 import { ThemeToggle } from "../components/ui/ThemeToggle"
 
-const PREFERRED_ID = "scr-ciclo-2026-2-a"
-
 export function PantallasPage() {
-  const { school, cycleId, bindScreen, toggleScreenOnline, syncNow, syncStatus, lastSyncAt } = useSchool()
+  const { school, cycleId, bindScreen, syncNow, syncStatus, lastSyncAt } = useSchool()
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"todos" | "online" | "offline">("todos")
-  const [screenId, setScreenId] = useState<string | null>(PREFERRED_ID)
+  const [screenId, setScreenId] = useState<string | null>(null)
   const [flash, setFlash] = useState("")
 
   const cycleScreens = useMemo(
@@ -46,24 +42,19 @@ export function PantallasPage() {
     const needle = query.trim().toLowerCase()
     return cycleScreens
       .filter((screen) => {
-        if (statusFilter === "online" && !screen.online) return false
-        if (statusFilter === "offline" && screen.online) return false
+        if (statusFilter === "online" && !screen.groupId) return false
+        if (statusFilter === "offline" && screen.groupId) return false
         if (needle.length === 0) return true
         const group = screen.groupId ? groupById.get(screen.groupId) : undefined
         return `${screen.name} ${screen.location} ${screen.pairingCode} ${group ? groupTitle(group) : ""}`
           .toLowerCase()
           .includes(needle)
       })
-      .sort((a, b) => {
-        if (a.id === PREFERRED_ID) return -1
-        if (b.id === PREFERRED_ID) return 1
-        return a.name.localeCompare(b.name, "es")
-      })
+      .sort((a, b) => a.name.localeCompare(b.name, "es"))
   }, [cycleScreens, groupById, query, statusFilter])
 
   const selected =
     cycleScreens.find((screen) => screen.id === screenId) ??
-    cycleScreens.find((screen) => screen.id === PREFERRED_ID) ??
     filtered[0] ??
     cycleScreens[0]
 
@@ -75,7 +66,7 @@ export function PantallasPage() {
       .sort((a, b) => studentFullName(a).localeCompare(studentFullName(b), "es"))
   }, [school.students, selectedGroup])
 
-  const online = cycleScreens.filter((screen) => screen.online).length
+  const online = cycleScreens.filter((screen) => Boolean(screen.groupId)).length
   const paired = cycleScreens.filter((screen) => Boolean(screen.groupId)).length
   const enrolled = cycleScreens.reduce((sum, screen) => {
     const group = screen.groupId ? groupById.get(screen.groupId) : undefined
@@ -145,7 +136,7 @@ export function PantallasPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatMini label="Pantallas del ciclo" value={String(cycleScreens.length)} hint={`${paired} vinculadas a un grupo`} iconClass="bg-app-blue-soft text-app-primary" icon={<Monitor size={20} />} />
-        <StatMini label="En línea" value={String(online)} hint={online === cycleScreens.length ? "Todas reportan conexión" : `${cycleScreens.length - online} apagadas`} iconClass="bg-app-green-soft text-app-green" icon={<Wifi size={20} />} />
+        <StatMini label="Vinculadas" value={String(online)} hint={online === cycleScreens.length && cycleScreens.length > 0 ? "Todas tienen grupo" : `${cycleScreens.length - online} sin grupo`} iconClass="bg-app-green-soft text-app-green" icon={<Link2 size={20} />} />
         <StatMini label="Sin vincular" value={String(cycleScreens.length - paired)} hint="Esperan código o grupo" iconClass="bg-app-orange-soft text-app-orange" icon={<Unplug size={20} />} />
         <StatMini label="Alumnos en TV" value={String(enrolled)} hint="Suma de grupos con pantalla" iconClass="bg-app-purple-soft text-app-purple" icon={<Users size={20} />} />
       </div>
@@ -164,13 +155,13 @@ export function PantallasPage() {
               />
             </label>
             <MenuSelect
-              ariaLabel="Filtrar por conexión"
+              ariaLabel="Filtrar por vínculo"
               value={statusFilter}
               align="left"
               options={[
                 { value: "todos", label: "Todas" },
-                { value: "online", label: "En línea" },
-                { value: "offline", label: "Apagadas" },
+                { value: "online", label: "Vinculadas" },
+                { value: "offline", label: "Sin grupo" },
               ]}
               onChange={setStatusFilter}
             />
@@ -188,13 +179,13 @@ export function PantallasPage() {
                       active ? "border-app-primary bg-app-primary-soft/30" : "border-transparent hover:bg-app-card-hover"
                     }`}
                   >
-                    <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${screen.online ? "bg-app-blue-soft text-app-primary" : "bg-app-card-hover text-app-muted"}`}>
+                    <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${screen.groupId ? "bg-app-blue-soft text-app-primary" : "bg-app-card-hover text-app-muted"}`}>
                       <Tv size={20} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
                         <span className="truncate font-bold">{group ? groupTitle(group) : screen.name}</span>
-                        <span className={`size-2 shrink-0 rounded-full ${screen.online ? "bg-app-green" : "bg-app-muted"}`} />
+                        <span className={`size-2 shrink-0 rounded-full ${screen.groupId ? "bg-app-green" : "bg-app-muted"}`} />
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-app-muted">
                         {screen.location} · {screen.pairingCode}
@@ -216,9 +207,8 @@ export function PantallasPage() {
           cycleGroups={cycleGroups}
           onBind={(groupId) => {
             bindScreen(selected.id, groupId)
-            notice(groupId ? "Grupo asignado a esta TV." : "Se desvinculó el grupo.")
+            notice(groupId ? "Grupo asignado a esta TV. La pantalla tomará este salón al vincular el código." : "Se desvinculó el grupo.")
           }}
-          onToggle={() => toggleScreenOnline(selected.id)}
         />
 
         <RosterCard group={selectedGroup} students={roster} />
@@ -235,7 +225,6 @@ function ScreenDetail({
   gradeColor,
   cycleGroups,
   onBind,
-  onToggle,
 }: {
   screen: ClassroomScreen
   group: GradeGroup | undefined
@@ -244,7 +233,6 @@ function ScreenDetail({
   gradeColor: string | undefined
   cycleGroups: GradeGroup[]
   onBind: (groupId: string | null) => void
-  onToggle: () => void
 }) {
   return (
     <Card className="flex min-h-[560px] flex-col p-5">
@@ -254,8 +242,8 @@ function ScreenDetail({
           <h2 className="mt-1 text-xl font-extrabold">{group ? groupTitle(group) : screen.name}</h2>
           <p className="mt-1 text-sm text-app-muted">{screen.location}</p>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${screen.online ? "bg-app-green-soft text-app-green" : "bg-app-card-hover text-app-muted"}`}>
-          {screen.online ? "En línea" : "Apagada"}
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${screen.groupId ? "bg-app-green-soft text-app-green" : "bg-app-card-hover text-app-muted"}`}>
+          {screen.groupId ? "Vinculada" : "Sin grupo"}
         </span>
       </div>
 
@@ -294,14 +282,6 @@ function ScreenDetail({
       ) : null}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-6">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="inline-flex items-center gap-2 rounded-xl border border-app-line px-3 py-2 text-sm font-semibold hover:bg-app-card-hover"
-        >
-          {screen.online ? <WifiOff size={16} /> : <Wifi size={16} />}
-          {screen.online ? "Marcar apagada" : "Marcar en línea"}
-        </button>
         {screen.groupId ? (
           <button
             type="button"
@@ -312,7 +292,7 @@ function ScreenDetail({
             Desvincular grupo
           </button>
         ) : (
-          <p className="inline-flex items-center gap-2 text-xs text-app-muted">
+          <p className="inline-flex items-center gap-1.5 text-xs text-app-muted">
             <Link2 size={14} />
             Asigna un grupo para que la TV reciba su lista.
           </p>

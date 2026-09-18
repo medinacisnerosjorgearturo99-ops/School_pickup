@@ -27,4 +27,5 @@ dependencies {
     implementation(libs.ktor.server.call.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback.classic)
+    implementation(libs.sqlite.jdbc)
 }

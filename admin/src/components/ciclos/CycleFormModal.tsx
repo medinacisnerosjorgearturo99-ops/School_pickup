@@ -20,7 +20,7 @@ export function CycleFormModal({
   const [startDate, setStartDate] = useState(cycle?.startDate ?? todayISO())
   const [endDate, setEndDate] = useState(cycle?.endDate ?? "")
   const [schoolDays, setSchoolDays] = useState(String(cycle?.schoolDays ?? 190))
-  const [notes, setNotes] = useState(cycle?.notes ?? "Ciclo regular")
+  const [notes, setNotes] = useState(cycle?.notes ?? "")
   const [makeActive, setMakeActive] = useState(cycle?.status === "activo")
   const [error, setError] = useState("")
 

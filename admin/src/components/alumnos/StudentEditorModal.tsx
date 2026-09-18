@@ -24,6 +24,7 @@ function rowsFromStudent(student: Student | null, guardians: Guardian[]): Guardi
         id: guardian.id,
         name: guardian.name,
         email: guardian.email,
+        password: guardian.password ?? "",
         phone: guardian.phone,
         relation: guardian.relation,
         kind: guardian.kind,
@@ -38,6 +39,7 @@ function emptyRow(kind: GuardianKind): GuardianRow {
     key: `new-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
     name: "",
     email: "",
+    password: "",
     phone: "",
     relation: "Madre",
     kind,
@@ -61,13 +63,13 @@ export function StudentEditorModal({
   const [lastName, setLastName] = useState(student?.lastName ?? "")
   const [groupId, setGroupId] = useState(student?.groupId ?? groups[0]?.id ?? "")
   const [status, setStatus] = useState<AcademicStatus>(student?.status ?? "activo")
-  const [birthDate, setBirthDate] = useState(student?.birthDate ?? "2017-03-12")
+  const [birthDate, setBirthDate] = useState(student?.birthDate ?? "")
   const [gender, setGender] = useState<Gender>(student?.gender ?? "Masculino")
   const [curp, setCurp] = useState(student?.curp ?? "")
   const [address, setAddress] = useState(student?.address ?? "")
-  const [bloodType, setBloodType] = useState(student?.bloodType ?? "O+")
-  const [allergies, setAllergies] = useState(student?.allergies ?? "Ninguna")
-  const [medicalNotes, setMedicalNotes] = useState(student?.medicalNotes ?? "Sin observaciones")
+  const [bloodType, setBloodType] = useState(student?.bloodType ?? "")
+  const [allergies, setAllergies] = useState(student?.allergies ?? "")
+  const [medicalNotes, setMedicalNotes] = useState(student?.medicalNotes ?? "")
   const [rows, setRows] = useState<GuardianRow[]>(() => rowsFromStudent(student, guardians))
   const [linkId, setLinkId] = useState("")
   const [error, setError] = useState("")
@@ -99,6 +101,7 @@ export function StudentEditorModal({
         id: guardian.id,
         name: guardian.name,
         email: guardian.email,
+        password: guardian.password ?? "",
         phone: guardian.phone,
         relation: guardian.relation,
         kind: guardian.kind,
@@ -109,6 +112,10 @@ export function StudentEditorModal({
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    if (!groupId) {
+      setError("Crea un grupo en Grados y grupos antes de dar de alta alumnos.")
+      return
+    }
     const result = onSave(
       {
         firstName,
@@ -126,6 +133,7 @@ export function StudentEditorModal({
           id: row.id,
           name: row.name,
           email: row.email,
+          password: row.password,
           phone: row.phone,
           relation: row.relation,
           kind: row.kind,
@@ -142,11 +150,11 @@ export function StudentEditorModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Nombre
-            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Lucas" autoFocus />
+            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Nombre" autoFocus />
           </label>
           <label className="text-sm font-semibold">
             Apellidos
-            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Gómez Martínez" />
+            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Apellidos" />
           </label>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -157,7 +165,11 @@ export function StudentEditorModal({
                 ariaLabel="Grupo"
                 value={groupId}
                 align="left"
-                options={groups.map((group) => ({ value: group.id, label: `${group.grade} - ${group.letter}` }))}
+                options={
+                  groups.length === 0
+                    ? [{ value: "", label: "Crea un grupo primero" }]
+                    : groups.map((group) => ({ value: group.id, label: `${group.grade} - ${group.letter}` }))
+                }
                 onChange={setGroupId}
               />
             </div>
@@ -201,7 +213,7 @@ export function StudentEditorModal({
         </div>
         <label className="text-sm font-semibold">
           CURP
-          <input className={fieldClass} value={curp} onChange={(event) => setCurp(event.target.value.toUpperCase())} placeholder="GOML170312HMCRZS09" />
+          <input className={fieldClass} value={curp} onChange={(event) => setCurp(event.target.value.toUpperCase())} placeholder="CURP de 18 caracteres" />
         </label>
         <label className="text-sm font-semibold">
           Domicilio
@@ -262,7 +274,7 @@ export function StudentEditorModal({
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="text-sm font-semibold">
                       Nombre
-                      <input className={fieldClass} value={row.name} onChange={(event) => patchRow(row.key, { name: event.target.value })} placeholder="María Gómez López" />
+                      <input className={fieldClass} value={row.name} onChange={(event) => patchRow(row.key, { name: event.target.value })} placeholder="Nombre completo" />
                     </label>
                     <label className="text-sm font-semibold">
                       Parentesco
@@ -278,11 +290,20 @@ export function StudentEditorModal({
                     </label>
                     <label className="text-sm font-semibold">
                       Correo
-                      <input type="email" className={fieldClass} value={row.email} onChange={(event) => patchRow(row.key, { email: event.target.value })} placeholder="maria@correo.com" />
+                      <input type="email" className={fieldClass} value={row.email} onChange={(event) => patchRow(row.key, { email: event.target.value })} placeholder="correo@escuela.edu" />
                     </label>
                     <label className="text-sm font-semibold">
                       Teléfono
-                      <input className={fieldClass} value={row.phone} onChange={(event) => patchRow(row.key, { phone: event.target.value })} placeholder="5551001001" />
+                      <input className={fieldClass} value={row.phone} onChange={(event) => patchRow(row.key, { phone: event.target.value })} placeholder="55 0000 0000" />
+                    </label>
+                    <label className="text-sm font-semibold">
+                      Contraseña de la app
+                      <input
+                        className={fieldClass}
+                        value={row.password ?? ""}
+                        onChange={(event) => patchRow(row.key, { password: event.target.value })}
+                        placeholder="Se genera al guardar"
+                      />
                     </label>
                     <label className="text-sm font-semibold sm:col-span-2">
                       Tipo

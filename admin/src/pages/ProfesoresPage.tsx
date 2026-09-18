@@ -37,7 +37,6 @@ import { MenuSelect } from "../components/ui/MenuSelect"
 import { Modal } from "../components/ui/Modal"
 import { ThemeToggle } from "../components/ui/ThemeToggle"
 
-const PREFERRED_ID = "t-ana"
 type StatusFilter = "todos" | "activo" | "inactivo"
 type DetailTab = "info" | "asignaturas" | "horarios" | "evaluaciones" | "documentos" | "historial"
 
@@ -60,7 +59,7 @@ export function ProfesoresPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(8)
-  const [teacherId, setTeacherId] = useState<string | null>(PREFERRED_ID)
+  const [teacherId, setTeacherId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [tab, setTab] = useState<DetailTab>("info")
   const [formTeacher, setFormTeacher] = useState<Teacher | null | undefined>(undefined)
@@ -92,11 +91,7 @@ export function ProfesoresPage() {
           .toLowerCase()
           .includes(needle)
       })
-      .sort((a, b) => {
-        if (a.id === PREFERRED_ID) return -1
-        if (b.id === PREFERRED_ID) return 1
-        return teacherName(a.firstName, a.lastName).localeCompare(teacherName(b.firstName, b.lastName), "es")
-      })
+      .sort((a, b) => teacherName(a.firstName, a.lastName).localeCompare(teacherName(b.firstName, b.lastName), "es"))
   }, [areaFilter, cycleTeachers, newOnly, query, statusFilter, subjectFilter])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
@@ -107,7 +102,6 @@ export function ProfesoresPage() {
 
   const selected =
     cycleTeachers.find((teacher) => teacher.id === teacherId) ??
-    cycleTeachers.find((teacher) => teacher.id === PREFERRED_ID) ??
     filtered[0] ??
     cycleTeachers[0]
 
@@ -163,10 +157,30 @@ export function ProfesoresPage() {
     return (
       <div className="mx-auto max-w-[1500px]">
         <h1 className="text-[28px] font-extrabold">Profesores</h1>
-        <p className="mt-2 text-sm text-app-muted">Aún no hay profesores en este ciclo.</p>
-        <button type="button" onClick={() => setFormTeacher(null)} className="mt-4 rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white">
-          + Nuevo profesor
-        </button>
+        <p className="mt-2 text-sm text-app-muted">
+          {cycleId ? "Aún no hay profesores en este ciclo." : "Crea un ciclo escolar primero para poder dar de alta profesores."}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="rounded-xl border border-app-line px-4 py-2.5 text-sm font-semibold hover:bg-app-card-hover"
+          >
+            Importar profesores
+          </button>
+          <button
+            type="button"
+            disabled={!cycleId}
+            onClick={() => setFormTeacher(null)}
+            className="rounded-xl bg-app-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            + Nuevo profesor
+          </button>
+        </div>
+        {formTeacher !== undefined ? (
+          <TeacherEditorModal teacher={formTeacher} onClose={() => setFormTeacher(undefined)} onSave={handleSave} />
+        ) : null}
+        {importOpen ? <ImportTeachersModal onClose={() => setImportOpen(false)} onImport={handleImport} /> : null}
       </div>
     )
   }
@@ -626,6 +640,9 @@ function DetailPanel({
           </ul>
         ) : null}
         {tab === "evaluaciones" ? (
+          teacherEvaluations(teacher).length === 0 ? (
+            <p className="text-sm text-app-muted">Sin evaluaciones cargadas.</p>
+          ) : (
           <ul className="space-y-2">
             {teacherEvaluations(teacher).map((item) => (
               <li key={item.id} className="rounded-xl border border-app-line px-3 py-2.5">
@@ -637,8 +654,12 @@ function DetailPanel({
               </li>
             ))}
           </ul>
+          )
         ) : null}
         {tab === "documentos" ? (
+          teacherDocuments(teacher).length === 0 ? (
+            <p className="text-sm text-app-muted">Sin documentos cargados.</p>
+          ) : (
           <ul className="space-y-2">
             {teacherDocuments(teacher).map((doc) => (
               <li key={doc.id} className="flex items-center gap-3 rounded-xl border border-app-line px-3 py-2.5">
@@ -652,6 +673,7 @@ function DetailPanel({
               </li>
             ))}
           </ul>
+          )
         ) : null}
         {tab === "historial" ? (
           <ul className="space-y-2">

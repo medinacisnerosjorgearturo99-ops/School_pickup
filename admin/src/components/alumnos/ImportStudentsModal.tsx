@@ -11,7 +11,7 @@ export function ImportStudentsModal({
   onClose: () => void
   onImport: (csv: string) => { count: number } | { error: string }
 }) {
-  const [csv, setCsv] = useState("Nombre,Apellido,Grado,Grupo\nAna,Ruiz,2º Primaria,A")
+  const [csv, setCsv] = useState("Nombre,Apellido,Grado,Grupo")
   const [error, setError] = useState("")
 
   function submit(event: FormEvent) {

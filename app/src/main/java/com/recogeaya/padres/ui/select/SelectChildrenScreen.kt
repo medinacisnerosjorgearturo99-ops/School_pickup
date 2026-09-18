@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,8 +36,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.recogeaya.padres.data.Child
+import com.recogeaya.padres.data.ResponsibleKind
 import com.recogeaya.padres.data.ResponsiblePerson
-import com.recogeaya.padres.data.SampleData
 import com.recogeaya.padres.ui.components.AppCard
 import com.recogeaya.padres.ui.components.BackLink
 import com.recogeaya.padres.ui.components.RecogeYaBottomScreen
@@ -54,8 +53,8 @@ fun SelectChildrenScreen(
     children: List<Child>,
     selectedIds: Set<String>,
     shareLocation: Boolean,
-    onToggleChild: (String) -> Unit,
     onShareLocationChange: (Boolean) -> Unit,
+    onToggleChild: (String) -> Unit,
     onNotify: () -> Unit,
     onBack: () -> Unit,
     onEditResponsible: () -> Unit
@@ -117,38 +116,56 @@ fun SelectChildrenScreen(
         }
 
         Spacer(Modifier.height(14.dp))
-        children.forEach { child ->
-            SelectableChildCard(
-                child = child,
-                selected = child.id in selectedIds,
-                onToggle = { onToggleChild(child.id) }
-            )
+        if (children.isEmpty()) {
+            AppCard {
+                Column(Modifier.padding(dimens.cardPad)) {
+                    Text("Sin alumnos asignados", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Cuando la escuela dé de alta tu correo como responsable, aquí aparecerán los niños a tu cargo.",
+                        color = RecogeYaColors.TextMuted,
+                        fontSize = 13.sp
+                    )
+                }
+            }
             Spacer(Modifier.height(10.dp))
+        } else {
+            children.forEach { child ->
+                SelectableChildCard(
+                    child = child,
+                    selected = child.id in selectedIds,
+                    onToggle = { onToggleChild(child.id) }
+                )
+                Spacer(Modifier.height(10.dp))
+            }
         }
 
+        Spacer(Modifier.height(14.dp))
         AppCard {
             Row(
                 modifier = Modifier.padding(dimens.cardPad),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Filled.LocationOn, null, tint = RecogeYaColors.Primary)
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    "Compartir ubicación temporal",
-                    modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Compartir ubicación", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Solo durante esta recogida. Se deja de compartir al llegar o cancelar.",
+                        color = RecogeYaColors.TextMuted,
+                        fontSize = 13.sp
+                    )
+                }
                 Switch(
                     checked = shareLocation,
                     onCheckedChange = onShareLocationChange,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
+                        checkedThumbColor = RecogeYaColors.Card,
                         checkedTrackColor = RecogeYaColors.Primary
                     )
                 )
             }
         }
+
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -224,12 +241,18 @@ private fun SelectableChildCard(
 private fun SelectPreview() {
     RecogeYaTheme {
         SelectChildrenScreen(
-            responsible = SampleData.authorizedPeople.first(),
-            children = SampleData.children,
-            selectedIds = setOf("lucas", "daniela"),
+            responsible = ResponsiblePerson(
+                id = "",
+                name = "Responsable",
+                initials = "R",
+                relation = "Padre",
+                kind = ResponsibleKind.PRIMARY
+            ),
+            children = emptyList(),
+            selectedIds = emptySet(),
             shareLocation = true,
-            onToggleChild = {},
             onShareLocationChange = {},
+            onToggleChild = {},
             onNotify = {},
             onBack = {},
             onEditResponsible = {}

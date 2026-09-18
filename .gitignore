@@ -18,3 +18,5 @@ local.properties
 admin/node_modules
 admin/dist
 admin/dist-ssr
+/data/
+*.db

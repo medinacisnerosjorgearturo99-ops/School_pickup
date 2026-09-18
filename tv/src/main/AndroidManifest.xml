@@ -23,7 +23,7 @@
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:exported="true"
-            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.RecogeYaTv">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>RecogeYa · Paleta de color</title>
+  <style>
+    @page { size: A4; margin: 16mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { margin: 0; font-family: "Segoe UI", Inter, sans-serif; color: #111827; }
+    h1 { font-size: 22pt; margin: 0 0 4px; letter-spacing: -0.03em; }
+    .sub { color: #6B7280; margin: 0 0 22px; font-size: 11pt; }
+    .brand {
+      display: inline-block; background: #2152FF; color: #fff; font-weight: 700;
+      font-size: 9pt; letter-spacing: .12em; padding: 4px 10px; border-radius: 6px; margin-bottom: 10px;
+    }
+    .row { display: flex; gap: 12px; margin-bottom: 14px; }
+    .card {
+      flex: 1; border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden;
+    }
+    .card .c { height: 72px; }
+    .card .t { padding: 10px 12px; }
+    .role { font-size: 8pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; }
+    .name { font-size: 13pt; font-weight: 700; margin: 2px 0 2px; }
+    .hex { font-family: Consolas, monospace; font-size: 11pt; color: #2152FF; }
+    .use { font-size: 9pt; color: #6B7280; margin: 4px 0 0; }
+    h2 { font-size: 12pt; margin: 22px 0 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #E5E7EB; }
+    th { color: #6B7280; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .04em; }
+    .dot { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: middle; margin-right: 8px; border: 1px solid rgba(0,0,0,.08); }
+    .note { background: #EAF1FF; border-radius: 10px; padding: 12px 14px; font-size: 10pt; color: #1B45D6; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="brand">RECOGEYA</div>
+  <h1>Paleta de color</h1>
+  <p class="sub">6 colores de marca. Sirven para mobile, TV y administrativo.</p>
+
+  <div class="row">
+    <div class="card">
+      <div class="c" style="background:#2152FF"></div>
+      <div class="t">
+        <div class="role">Primario</div>
+        <div class="name">Azul RecogeYa</div>
+        <div class="hex">#2152FF</div>
+        <p class="use">Botones, logo, selección, nav activa.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="c" style="background:#1B45D6"></div>
+      <div class="t">
+        <div class="role">Secundario</div>
+        <div class="name">Azul oscuro</div>
+        <div class="hex">#1B45D6</div>
+        <p class="use">Hover, énfasis y pressed del primario.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="c" style="background:#111827"></div>
+      <div class="t">
+        <div class="role">Neutro</div>
+        <div class="name">Texto</div>
+        <div class="hex">#111827</div>
+        <p class="use">Títulos y nombres. En oscuro se invierte a #F4F7FB.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <div class="c" style="background:#6B7280"></div>
+      <div class="t">
+        <div class="role">Neutro muted</div>
+        <div class="name">Texto auxiliar</div>
+        <div class="hex">#6B7280</div>
+        <p class="use">Ayudas, grado, timestamps. En oscuro: #8B9BB4.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="c" style="background:#16A34A"></div>
+      <div class="t">
+        <div class="role">Éxito</div>
+        <div class="name">Verde</div>
+        <div class="hex">#16A34A</div>
+        <p class="use">Llegó, listo, entrega ok. En TV/admin oscuro: #22C55E.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="c" style="background:#D97706"></div>
+      <div class="t">
+        <div class="role">Advertencia</div>
+        <div class="name">Ámbar</div>
+        <div class="hex">#D97706</div>
+        <p class="use">En camino, ETA, aviso. En TV/admin oscuro: #F59E0B.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2>Roles</h2>
+  <table>
+    <thead>
+      <tr><th>Rol</th><th>Color</th><th>Qué es</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="dot" style="background:#2152FF"></span>Primario</td>
+        <td>#2152FF</td>
+        <td>El color de la marca. El que más se ve: CTAs y acentos.</td>
+      </tr>
+      <tr>
+        <td><span class="dot" style="background:#1B45D6"></span>Secundario</td>
+        <td>#1B45D6</td>
+        <td>Variante del primario. No es otro color de marca; es el mismo azul más oscuro.</td>
+      </tr>
+      <tr>
+        <td><span class="dot" style="background:#111827"></span>Neutro</td>
+        <td>#111827</td>
+        <td>Texto principal. No es un acento; estructura la UI.</td>
+      </tr>
+      <tr>
+        <td><span class="dot" style="background:#6B7280"></span>Neutro muted</td>
+        <td>#6B7280</td>
+        <td>Texto secundario. Menos peso visual que el neutro.</td>
+      </tr>
+      <tr>
+        <td><span class="dot" style="background:#16A34A"></span>Éxito</td>
+        <td>#16A34A</td>
+        <td>Estado positivo. No se usa como marca, solo como semántica.</td>
+      </tr>
+      <tr>
+        <td><span class="dot" style="background:#D97706"></span>Advertencia</td>
+        <td>#D97706</td>
+        <td>Estado de espera o alerta. Tampoco es marca.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    Fondos: claro <strong>#F7F8FC</strong> (mobile / admin light) y oscuro <strong>#0A1322</strong> (admin / TV).
+    No cuentan como color de marca; son el lienzo. En superficies oscuras el acento claro es <strong>#7EA2FF</strong> para que el primario se lea sobre negro.
+  </div>
+</body>
+</html>
