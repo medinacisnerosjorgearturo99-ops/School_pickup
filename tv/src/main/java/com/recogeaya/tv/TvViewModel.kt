@@ -15,8 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 data class TvUiState(
@@ -27,7 +28,8 @@ data class TvUiState(
     val pairing: Boolean = false,
     val pairingError: String? = null,
     val pairingBusy: Boolean = false,
-    val screens: List<TvScreenOption> = emptyList()
+    val screens: List<TvScreenOption> = emptyList(),
+    val dateLabel: String = ""
 )
 
 class TvViewModel(application: Application) : AndroidViewModel(application) {
@@ -39,12 +41,22 @@ class TvViewModel(application: Application) : AndroidViewModel(application) {
         )
     )
     val ui: StateFlow<TvUiState> = _ui.asStateFlow()
-    private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val zone = ZoneId.of("America/Mexico_City")
+    private val clockFmt = DateTimeFormatter.ofPattern("HH:mm:ss")
+    private val dateFmt = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale("es", "MX"))
 
     init {
         viewModelScope.launch {
             while (isActive) {
-                _ui.value = _ui.value.copy(clock = timeFormat.format(Date()))
+                val now = ZonedDateTime.now(zone)
+                val remoteClock = _ui.value.dashboard.clock
+                val remoteDate = _ui.value.dashboard.clockDate
+                _ui.value = _ui.value.copy(
+                    clock = remoteClock.ifBlank { now.format(clockFmt) },
+                    dateLabel = remoteDate.ifBlank {
+                        now.format(dateFmt).replaceFirstChar { it.titlecase(Locale("es", "MX")) }
+                    }
+                )
                 delay(1000)
             }
         }
@@ -130,7 +142,7 @@ class TvViewModel(application: Application) : AndroidViewModel(application) {
         if (remote == null) {
             _ui.value = _ui.value.copy(
                 pairingBusy = false,
-                pairingError = "No se encontró ese salón. Revisa el código en Dirección y que el servidor esté en :8080."
+                pairingError = "No se encontró ese salón. Revisa el código en Dirección y vuelve a sincronizar el padrón."
             )
             return
         }

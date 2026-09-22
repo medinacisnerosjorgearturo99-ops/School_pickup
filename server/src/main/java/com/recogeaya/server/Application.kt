@@ -24,15 +24,15 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import java.nio.file.Path
 
 fun main() {
-    RecogeYaDb.open(Path.of("data", "recogeya.db"))
+    val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
+    RecogeYaDb.open()
     runBlocking {
         SchoolRoster.restore()
         PickupStore.restore()
     }
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
+    embeddedServer(Netty, port = port, host = "0.0.0.0") {
         install(ContentNegotiation) {
             json(
                 Json {
@@ -62,6 +62,9 @@ fun main() {
         }
 
         routing {
+            get("/health") {
+                call.respond(mapOf("ok" to true))
+            }
             get("/api/state") {
                 val screenId = call.request.queryParameters["screenId"]
                 call.respond(PickupStore.dashboard(screenId))
@@ -125,6 +128,15 @@ fun main() {
             }
             post("/api/pickups") {
                 val body = call.receive<NotifyPickupRequest>()
+                val firstId = body.children.firstOrNull()?.id
+                val group = firstId?.let { SchoolRoster.groupForStudent(it) }
+                if (group != null && !PickupWindow.isOpen(group.dismissalTime)) {
+                    call.respond(
+                        HttpStatusCode.Conflict,
+                        mapOf("error" to "La recogida se abre 5 minutos antes de la hora de salida (${group.dismissalTime}).")
+                    )
+                    return@post
+                }
                 call.respond(PickupStore.notifyPickup(body))
             }
             post("/api/pickups/location") {
@@ -145,6 +157,11 @@ fun main() {
                 val updated = PickupStore.setArrived(id, body.arrived, body.etaMinutes)
                     ?: return@post call.respond(HttpStatusCode.NotFound)
                 call.respond(updated)
+            }
+            post("/api/pickups/{id}/collected") {
+                val id = call.parameters["id"] ?: return@post call.respond(HttpStatusCode.BadRequest)
+                PickupStore.collect(id)
+                call.respond(mapOf("ok" to true))
             }
             delete("/api/pickups/{id}") {
                 val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)

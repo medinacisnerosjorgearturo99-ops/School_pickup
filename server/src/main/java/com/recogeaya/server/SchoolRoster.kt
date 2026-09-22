@@ -80,7 +80,8 @@ object SchoolRoster {
             totalStudents = enrolled,
             screenId = screen?.id.orEmpty(),
             groupId = group?.id.orEmpty(),
-            pairingCode = screen?.pairingCode.orEmpty()
+            pairingCode = screen?.pairingCode.orEmpty(),
+            dismissalTime = group?.dismissalTime.orEmpty()
         )
     }
 
@@ -151,7 +152,8 @@ object SchoolRoster {
                 zone = group?.zoneName.orEmpty(),
                 zonePhone = group?.zonePhone.orEmpty(),
                 zoneLat = group?.zoneLat,
-                zoneLng = group?.zoneLng
+                zoneLng = group?.zoneLng,
+                dismissalTime = group?.dismissalTime.orEmpty()
             )
         }
         val relatedIds = kids.flatMap { it.guardianIds }.toSet()

@@ -57,7 +57,10 @@ fun SelectChildrenScreen(
     onToggleChild: (String) -> Unit,
     onNotify: () -> Unit,
     onBack: () -> Unit,
-    onEditResponsible: () -> Unit
+    onEditResponsible: () -> Unit,
+    pickupEnabled: Boolean = true,
+    pickupHint: String = "",
+    pickupError: String? = null
 ) {
     val dimens = LocalAppDimens.current
     val selectedCount = selectedIds.size
@@ -72,7 +75,7 @@ fun SelectChildrenScreen(
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = onNotify,
-                enabled = selectedCount > 0,
+                enabled = selectedCount > 0 && pickupEnabled,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -80,7 +83,19 @@ fun SelectChildrenScreen(
                     disabledContainerColor = RecogeYaColors.Border
                 )
             ) {
-                Text(notifyLabel, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(
+                    if (!pickupEnabled) "AÚN NO ES HORA DE SALIDA" else notifyLabel,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+            if (pickupHint.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(pickupHint, color = RecogeYaColors.TextMuted, fontSize = 12.sp)
+            }
+            if (!pickupError.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(pickupError, color = RecogeYaColors.Warning, fontSize = 12.sp)
             }
             Spacer(Modifier.height(12.dp))
         }

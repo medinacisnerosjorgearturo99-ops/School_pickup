@@ -59,8 +59,10 @@ fun TrackingScreen(
     distanceMeters: Int? = null,
     locationEtaMinutes: Int? = null,
     onArrived: () -> Unit,
+    onCollected: () -> Unit,
     onCancel: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    parentArrived: Boolean = false
 ) {
     val dimens = LocalAppDimens.current
     val context = LocalContext.current
@@ -73,16 +75,27 @@ fun TrackingScreen(
     RecogeYaBottomScreen(
         bottomContent = {
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onArrived,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = RecogeYaColors.Primary)
-            ) {
-                Text(
-                    if (zone.isBlank()) "Ya llegué" else "Ya llegué a $zone",
-                    fontWeight = FontWeight.Bold
-                )
+            if (!parentArrived) {
+                Button(
+                    onClick = onArrived,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RecogeYaColors.Primary)
+                ) {
+                    Text(
+                        if (zone.isBlank()) "Ya llegué" else "Ya llegué a $zone",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onCollected,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RecogeYaColors.Success)
+                ) {
+                    Text("Ya lo recogí", fontWeight = FontWeight.Bold)
+                }
             }
             Spacer(Modifier.height(8.dp))
             if (phone.isNotBlank()) {
@@ -225,7 +238,7 @@ private fun ChildTrackingCard(child: Child, progress: ChildPickupProgress) {
                 Text(child.gradeGroup, color = RecogeYaColors.TextMuted, fontSize = 13.sp)
                 Spacer(Modifier.height(4.dp))
                 val detail = when (progress.step) {
-                    PickupStep.LISTO -> progress.zone?.takeIf { it.isNotBlank() } ?: "Zona de entrega"
+                    PickupStep.LISTO -> progress.zone?.takeIf { it.isNotBlank() } ?: "Preparado"
                     PickupStep.PREPARANDO -> progress.readyEtaMinutes?.let { "~$it min" } ?: "Preparando"
                     PickupStep.AVISADO -> "Avisado"
                 }
@@ -241,7 +254,7 @@ private fun ChildTrackingCard(child: Child, progress: ChildPickupProgress) {
                 }
             }
             when (progress.step) {
-                PickupStep.LISTO -> StatusChip("LISTO", RecogeYaColors.SuccessSoft, RecogeYaColors.Success)
+                PickupStep.LISTO -> StatusChip("PREPARADO", RecogeYaColors.SuccessSoft, RecogeYaColors.Success)
                 PickupStep.PREPARANDO -> StatusChip("PREPARANDO", RecogeYaColors.WarningSoft, RecogeYaColors.Warning)
                 PickupStep.AVISADO -> StatusChip("AVISADO", RecogeYaColors.PrimarySoft, RecogeYaColors.Primary)
             }
@@ -265,6 +278,7 @@ private fun TrackingPreview() {
             progress = emptyList(),
             tvConnected = false,
             onArrived = {},
+            onCollected = {},
             onCancel = {},
             onBack = {}
         )

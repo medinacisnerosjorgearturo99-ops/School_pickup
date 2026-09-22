@@ -1,6 +1,5 @@
 package com.recogeaya.tv.sync
 
-import android.os.Build
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -22,7 +21,9 @@ data class TvPickup(
     val arrived: Boolean = false,
     val etaMinutes: Int? = null,
     val fromParentApp: Boolean = false,
-    val verificationCode: String = ""
+    val verificationCode: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null
 ) {
     val fullName: String get() = "$firstName $lastName".trim()
     val gradeGroup: String
@@ -39,7 +40,8 @@ data class TvClassroom(
     val totalStudents: Int = 0,
     val screenId: String = "",
     val groupId: String = "",
-    val pairingCode: String = ""
+    val pairingCode: String = "",
+    val dismissalTime: String = ""
 )
 
 @Serializable
@@ -57,7 +59,10 @@ data class TvRosterStudent(
 data class TvDashboardState(
     val classroom: TvClassroom = TvClassroom(),
     val pickups: List<TvPickup> = emptyList(),
-    val roster: List<TvRosterStudent> = emptyList()
+    val roster: List<TvRosterStudent> = emptyList(),
+    val pickupOpen: Boolean = true,
+    val clock: String = "",
+    val clockDate: String = ""
 )
 
 @Serializable
@@ -75,12 +80,12 @@ data class TvScreensResponse(
 )
 
 object TvApi {
-    val BASE_URL: String = if (isEmulator()) "http://10.0.2.2:8080" else "http://10.76.67.180:8080"
+    const val BASE_URL = "https://schoolpickup-api.fly.dev"
 
     private val json = Json { ignoreUnknownKeys = true }
     private val client = OkHttpClient.Builder()
-        .connectTimeout(2, TimeUnit.SECONDS)
-        .readTimeout(4, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
     fun fetchState(screenId: String?): TvDashboardState? {
@@ -134,18 +139,6 @@ fun TvPickup.arrivalLabel(): String = when {
     else -> "EN CAMINO"
 }
 
-fun TvPickup.hasArrived(): Boolean = arrived || etaMinutes == 0
+fun TvPickup.hasLocation(): Boolean = latitude != null && longitude != null
 
-private fun isEmulator(): Boolean {
-    val fingerprint = Build.FINGERPRINT
-    val model = Build.MODEL
-    val hardware = Build.HARDWARE
-    val product = Build.PRODUCT
-    return fingerprint.startsWith("generic") ||
-        fingerprint.contains("emulator") ||
-        model.contains("Emulator") ||
-        model.contains("Android SDK") ||
-        hardware.contains("goldfish") ||
-        hardware.contains("ranchu") ||
-        product.contains("sdk")
-}
+fun TvPickup.hasArrived(): Boolean = arrived || etaMinutes == 0

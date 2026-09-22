@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react"
 import type { TeacherDraft } from "../../context/SchoolContext"
-import { TEACHER_AREAS, TEACHER_SUBJECTS } from "../../lib/teachers"
+import { TEACHER_AREAS } from "../../lib/teachers"
+import { curpOk, onlyCurp, onlyDigits, onlyName, onlyRfc, phoneOk, rfcOk, clampInt } from "../../lib/fields"
 import type { Gender, Teacher } from "../../types/school"
 import { MenuSelect } from "../ui/MenuSelect"
 import { Modal } from "../ui/Modal"
@@ -23,7 +24,7 @@ export function TeacherEditorModal({
   const [active, setActive] = useState(teacher?.active ?? true)
   const [area, setArea] = useState(teacher?.area ?? "Formación")
   const [role, setRole] = useState(teacher?.role ?? "Profesor titular")
-  const [subjects, setSubjects] = useState<string[]>(teacher?.subjects ?? ["Formación"])
+  const [subjects, setSubjects] = useState(teacher?.subjects.join(", ") ?? "")
   const [hoursPerWeek, setHoursPerWeek] = useState(String(teacher?.hoursPerWeek ?? 20))
   const [rating, setRating] = useState(String(teacher?.rating && teacher.rating > 0 ? teacher.rating : 4))
   const [hiredAt, setHiredAt] = useState(teacher?.hiredAt ?? new Date().toISOString().slice(0, 10))
@@ -35,10 +36,6 @@ export function TeacherEditorModal({
   const [personalEmail, setPersonalEmail] = useState(teacher?.personalEmail ?? "")
   const [address, setAddress] = useState(teacher?.address ?? "")
   const [error, setError] = useState("")
-
-  function toggleSubject(subject: string) {
-    setSubjects((current) => (current.includes(subject) ? current.filter((item) => item !== subject) : [...current, subject]))
-  }
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -52,13 +49,29 @@ export function TeacherEditorModal({
       setError("La evaluación va de 0 a 5.")
       return
     }
+    if (!curpOk(curp)) {
+      setError("El CURP debe tener 18 caracteres.")
+      return
+    }
+    if (!rfcOk(rfc)) {
+      setError("El RFC debe tener 12 o 13 caracteres.")
+      return
+    }
+    if (!phoneOk(phone)) {
+      setError("El teléfono debe tener 10 dígitos.")
+      return
+    }
+    const subjectList = subjects
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
     const result = onSave(
       {
         firstName,
         lastName,
         email,
         active,
-        subjects,
+        subjects: subjectList,
         area,
         role,
         hoursPerWeek: Math.round(hours),
@@ -83,16 +96,16 @@ export function TeacherEditorModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Nombre
-            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Nombre" autoFocus />
+            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(onlyName(event.target.value))} placeholder="Nombre" autoFocus maxLength={80} />
           </label>
           <label className="text-sm font-semibold">
             Apellidos
-            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Apellidos" />
+            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(onlyName(event.target.value))} placeholder="Apellidos" maxLength={80} />
           </label>
         </div>
         <label className="text-sm font-semibold">
           Correo institucional
-          <input type="email" className={fieldClass} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="correo@escuela.edu" />
+          <input type="email" className={fieldClass} value={email} onChange={(event) => setEmail(event.target.value.trim().slice(0, 80))} placeholder="correo@escuela.edu" />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
@@ -121,21 +134,19 @@ export function TeacherEditorModal({
           Puesto
           <input className={fieldClass} value={role} onChange={(event) => setRole(event.target.value)} />
         </label>
-        <fieldset>
-          <legend className="text-sm font-semibold">Asignaturas</legend>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {TEACHER_SUBJECTS.map((subject) => (
-              <label key={subject} className="inline-flex items-center gap-2 rounded-lg border border-app-line px-2.5 py-1.5 text-xs font-semibold">
-                <input type="checkbox" className="accent-[var(--primary)]" checked={subjects.includes(subject)} onChange={() => toggleSubject(subject)} />
-                {subject}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <label className="text-sm font-semibold">
+          Materia
+          <input
+            className={fieldClass}
+            value={subjects}
+            onChange={(event) => setSubjects(event.target.value.slice(0, 80))}
+            placeholder="Ej. Matemáticas, Español"
+          />
+        </label>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="text-sm font-semibold">
             Horas / semana
-            <input type="number" min={1} className={fieldClass} value={hoursPerWeek} onChange={(event) => setHoursPerWeek(event.target.value)} />
+            <input type="number" min={1} max={40} className={fieldClass} value={hoursPerWeek} onChange={(event) => setHoursPerWeek(clampInt(event.target.value, 1, 40))} />
           </label>
           <label className="text-sm font-semibold">
             Evaluación
@@ -170,17 +181,17 @@ export function TeacherEditorModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             CURP
-            <input className={fieldClass} value={curp} onChange={(event) => setCurp(event.target.value.toUpperCase())} />
+            <input className={fieldClass} value={curp} maxLength={18} onChange={(event) => setCurp(onlyCurp(event.target.value))} placeholder="18 caracteres" />
           </label>
           <label className="text-sm font-semibold">
             RFC
-            <input className={fieldClass} value={rfc} onChange={(event) => setRfc(event.target.value.toUpperCase())} />
+            <input className={fieldClass} value={rfc} maxLength={13} onChange={(event) => setRfc(onlyRfc(event.target.value))} placeholder="12 o 13 caracteres" />
           </label>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Teléfono
-            <input className={fieldClass} value={phone} onChange={(event) => setPhone(event.target.value)} />
+            <input className={fieldClass} value={phone} inputMode="numeric" maxLength={10} onChange={(event) => setPhone(onlyDigits(event.target.value, 10))} placeholder="10 dígitos" />
           </label>
           <label className="text-sm font-semibold">
             Correo personal

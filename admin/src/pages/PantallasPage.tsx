@@ -102,7 +102,7 @@ export function PantallasPage() {
       : syncStatus === "syncing"
         ? "Enviando padrón al servidor…"
         : syncStatus === "error"
-          ? "El servidor de TV no respondió. Abre :8080 y vuelve a sincronizar."
+          ? "El servidor no respondió. Vuelve a sincronizar."
           : "Aún no se ha enviado el padrón."
 
   return (

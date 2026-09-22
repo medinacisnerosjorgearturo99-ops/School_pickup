@@ -22,7 +22,7 @@ export function SetupStatusCard() {
       : syncStatus === "syncing"
         ? "Sincronizando con el servidor…"
         : syncStatus === "error"
-          ? "No se pudo sincronizar. Enciende el servidor en :8080."
+          ? "No se pudo sincronizar con el servidor."
           : "Esperando primera sincronización"
 
   return (

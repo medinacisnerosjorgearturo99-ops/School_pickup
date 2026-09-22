@@ -67,8 +67,9 @@ fun RecogeYaApp(
     ) { grants ->
         val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        viewModel.startPickup(shareIfPossible = granted)
-        goAfterNotify(navController, viewModel)
+        viewModel.startPickup(shareIfPossible = granted) { ok ->
+            if (ok) goAfterNotify(navController, viewModel)
+        }
     }
 
     LaunchedEffect(ui.loggedIn) {
@@ -102,7 +103,9 @@ fun RecogeYaApp(
                 activities = viewModel.activities,
                 onToggleChild = viewModel::toggleChild,
                 onPickupClick = { navController.navigate(Routes.Select) },
-                onLogout = viewModel::logout
+                onLogout = viewModel::logout,
+                pickupEnabled = viewModel.pickupOpen(),
+                pickupHint = viewModel.pickupHint()
             )
         }
         composable(Routes.Select) {
@@ -115,8 +118,9 @@ fun RecogeYaApp(
                 onToggleChild = viewModel::toggleChild,
                 onNotify = {
                     if (!ui.shareLocation) {
-                        viewModel.startPickup(shareIfPossible = false)
-                        goAfterNotify(navController, viewModel)
+                        viewModel.startPickup(shareIfPossible = false) { ok ->
+                            if (ok) goAfterNotify(navController, viewModel)
+                        }
                     } else {
                         val fine = ContextCompat.checkSelfPermission(
                             context,
@@ -127,8 +131,9 @@ fun RecogeYaApp(
                             Manifest.permission.ACCESS_COARSE_LOCATION
                         ) == PackageManager.PERMISSION_GRANTED
                         if (fine || coarse) {
-                            viewModel.startPickup(shareIfPossible = true)
-                            goAfterNotify(navController, viewModel)
+                            viewModel.startPickup(shareIfPossible = true) { ok ->
+                                if (ok) goAfterNotify(navController, viewModel)
+                            }
                         } else {
                             val permissions = buildList {
                                 add(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -145,7 +150,10 @@ fun RecogeYaApp(
                 onEditResponsible = {
                     viewModel.beginEditResponsible()
                     navController.navigate(Routes.Responsible)
-                }
+                },
+                pickupEnabled = viewModel.pickupOpen(),
+                pickupHint = viewModel.pickupHint(),
+                pickupError = ui.pickupError
             )
         }
         composable(Routes.Responsible) {
@@ -171,8 +179,10 @@ fun RecogeYaApp(
                 locationSharing = ui.locationSharing,
                 distanceMeters = ui.distanceMeters,
                 locationEtaMinutes = ui.locationEtaMinutes,
-                onArrived = {
-                    viewModel.markAllReady()
+                parentArrived = ui.parentArrived,
+                onArrived = viewModel::markArrived,
+                onCollected = {
+                    viewModel.markCollected()
                     val destination = if (viewModel.currentResponsible().isTemporary) {
                         Routes.Temporary
                     } else {
@@ -192,7 +202,6 @@ fun RecogeYaApp(
                 children = viewModel.selectedChildren(),
                 zone = viewModel.pickupZone(),
                 onDone = {
-                    viewModel.cancelPickup()
                     navController.popBackStack(Routes.Home, inclusive = false)
                 }
             )

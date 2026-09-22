@@ -18,6 +18,7 @@ import com.recogeaya.padres.data.ParentProfile
 import com.recogeaya.padres.data.School
 import com.recogeaya.padres.location.LocationShare
 import com.recogeaya.padres.location.PickupLocationService
+import com.recogeaya.padres.sync.PickupWindow
 import com.recogeaya.padres.sync.RecogeYaApi
 import com.recogeaya.padres.sync.toSession
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +56,10 @@ data class ParentUiState(
     val shareLocation: Boolean = true,
     val locationSharing: Boolean = false,
     val distanceMeters: Int? = null,
-    val locationEtaMinutes: Int? = null
+    val locationEtaMinutes: Int? = null,
+    val pickupError: String? = null,
+    val parentArrived: Boolean = false,
+    val clockTick: Long = 0L
 )
 
 class ParentPickupViewModel(application: Application) : AndroidViewModel(application) {
@@ -72,6 +76,12 @@ class ParentPickupViewModel(application: Application) : AndroidViewModel(applica
     private val clock = SimpleDateFormat("HH:mm", Locale.getDefault())
 
     init {
+        viewModelScope.launch {
+            while (isActive) {
+                _ui.update { it.copy(clockTick = System.currentTimeMillis()) }
+                delay(1000)
+            }
+        }
         viewModelScope.launch {
             LocationShare.lastFix.collect { fix ->
                 if (!_ui.value.pickupActive) return@collect
@@ -118,9 +128,15 @@ class ParentPickupViewModel(application: Application) : AndroidViewModel(applica
         _ui.value.progress.mapNotNull { it.zone }.firstOrNull { it.isNotBlank() }
             ?: _ui.value.pickupZone
 
-    fun setShareLocation(enabled: Boolean) {
-        _ui.update { it.copy(shareLocation = enabled) }
+    fun pickupHint(ids: Set<String> = _ui.value.selectedIds): String {
+        val wanted = ids.ifEmpty { _ui.value.children.map { it.id }.toSet() }
+        val dismissal = PickupWindow.earliestDismissal(
+            _ui.value.children.filter { it.id in wanted }.map { it.dismissalTime }
+        )
+        return if (PickupWindow.isOpen(dismissal)) "" else PickupWindow.waitLabel(dismissal)
     }
+
+    fun pickupOpen(ids: Set<String> = _ui.value.selectedIds): Boolean = pickupHint(ids).isEmpty()
 
     fun login(email: String, password: String) {
         viewModelScope.launch {
@@ -210,7 +226,7 @@ class ParentPickupViewModel(application: Application) : AndroidViewModel(applica
         val kids = selectedChildren().joinToString(", ") { it.fullName }
         val person = currentResponsible()
         return buildString {
-            appendLine("RecogeYa — entrega temporal")
+            appendLine("School Pickup — entrega temporal")
             appendLine("Alumno(s): $kids")
             appendLine("Responsable: ${person.name} (${person.relation})")
             appendLine("Código: ${_ui.value.verificationCode}")
@@ -219,49 +235,71 @@ class ParentPickupViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun startPickup(shareIfPossible: Boolean = false) {
+    fun setShareLocation(enabled: Boolean) {
+        _ui.update { it.copy(shareLocation = enabled) }
+    }
+
+    fun startPickup(shareIfPossible: Boolean = false, onDone: (Boolean) -> Unit = {}) {
         val selected = selectedChildren()
-        if (selected.isEmpty()) return
+        if (selected.isEmpty()) {
+            onDone(false)
+            return
+        }
+        if (!pickupOpen(selected.map { it.id }.toSet())) {
+            _ui.update { it.copy(pickupError = pickupHint(selected.map { it.id }.toSet())) }
+            onDone(false)
+            return
+        }
         val responsible = currentResponsible()
         val code = (1000..9999).random().toString()
         val zone = _ui.value.pickupZone.ifBlank { null }
         val sharing = _ui.value.shareLocation && shareIfPossible && hasLocationPermission()
-        _ui.update { state ->
-            state.copy(
-                pickupActive = true,
-                verificationCode = code,
-                locationSharing = sharing,
-                distanceMeters = null,
-                locationEtaMinutes = null,
-                progress = selected.map { child ->
-                    ChildPickupProgress(
-                        childId = child.id,
-                        step = PickupStep.AVISADO,
-                        zone = zone,
-                        readyEtaMinutes = null
-                    )
-                },
-                activities = listOf(
-                    PickupActivityItem(
-                        id = "act-$code",
-                        title = "Aviso enviado",
-                        description = selected.joinToString(", ") { it.fullName },
-                        timestamp = clock.format(Date())
-                    )
-                ) + state.activities
-            )
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                RecogeYaApi.notifyPickup(selected, responsible.name, code)
+        viewModelScope.launch {
+            val error = withContext(Dispatchers.IO) {
+                runCatching { RecogeYaApi.notifyPickup(selected, responsible.name, code) }
+                    .getOrElse { "No se pudo avisar a la escuela." }
             }
+            if (!error.isNullOrBlank()) {
+                _ui.update { it.copy(pickupError = error) }
+                onDone(false)
+                return@launch
+            }
+            _ui.update { state ->
+                state.copy(
+                    pickupActive = true,
+                    pickupError = null,
+                    parentArrived = false,
+                    verificationCode = code,
+                    locationSharing = sharing,
+                    distanceMeters = null,
+                    locationEtaMinutes = null,
+                    progress = selected.map { child ->
+                        ChildPickupProgress(
+                            childId = child.id,
+                            step = PickupStep.AVISADO,
+                            zone = zone,
+                            readyEtaMinutes = null
+                        )
+                    },
+                    activities = listOf(
+                        PickupActivityItem(
+                            id = "act-$code",
+                            title = "Aviso enviado",
+                            description = selected.joinToString(", ") { it.fullName },
+                            timestamp = clock.format(Date())
+                        )
+                    ) + state.activities
+                )
+            }
+            if (sharing) startSharing() else stopSharing()
+            startSync()
+            onDone(true)
         }
-        if (sharing) startSharing() else stopSharing()
-        startSync()
     }
 
     fun markArrived() {
         val ids = _ui.value.selectedIds
+        _ui.update { it.copy(parentArrived = true) }
         viewModelScope.launch(Dispatchers.IO) {
             ids.forEach { id ->
                 runCatching { RecogeYaApi.markArrived(id) }
@@ -269,15 +307,17 @@ class ParentPickupViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun markAllReady() {
+    fun markCollected() {
+        val ids = _ui.value.selectedIds
         stopSharing()
-        markArrived()
-        _ui.update { state ->
-            state.copy(
-                progress = state.progress.map {
-                    it.copy(step = PickupStep.LISTO, zone = it.zone ?: state.pickupZone.ifBlank { null })
-                }
-            )
+        syncJob?.cancel()
+        _ui.update {
+            it.copy(pickupActive = false, progress = emptyList(), tvConnected = false, parentArrived = false)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            ids.forEach { id ->
+                runCatching { RecogeYaApi.markCollected(id) }
+            }
         }
     }
 
@@ -359,6 +399,7 @@ class ParentPickupViewModel(application: Application) : AndroidViewModel(applica
                         state.copy(
                             progress = nextProgress,
                             tvConnected = true,
+                            parentArrived = state.parentArrived || remote.pickups.any { it.arrived },
                             pickupZone = remote.zone.ifBlank { state.pickupZone },
                             receptionPhone = remote.receptionPhone.ifBlank { state.receptionPhone },
                             locationEtaMinutes = if (state.locationSharing) {

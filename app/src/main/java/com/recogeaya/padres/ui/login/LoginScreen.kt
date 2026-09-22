@@ -98,7 +98,7 @@ fun LoginScreen(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                Text("RecogeYa", fontWeight = FontWeight.Bold, fontSize = dimens.title)
+                Text("School Pickup", fontWeight = FontWeight.Bold, fontSize = dimens.title)
                 Text(
                     "Inicia sesión con el correo que registraste como responsable y la contraseña que te envió la escuela.",
                     color = RecogeYaColors.TextMuted,

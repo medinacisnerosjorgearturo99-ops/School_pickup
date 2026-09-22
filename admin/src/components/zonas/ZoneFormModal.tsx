@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react"
 import type { ZoneDraft } from "../../context/SchoolContext"
+import { clampInt, onlyAlnum, onlyDigits, onlyName, phoneOk } from "../../lib/fields"
 import { gradeColorKeys } from "../../lib/grades"
 import { nextZoneLetter } from "../../lib/zones"
 import type { AcademicStatus, DeliveryZone, Guardian } from "../../types/school"
 import { MenuSelect } from "../ui/MenuSelect"
 import { Modal } from "../ui/Modal"
+import { PlacePickerMap } from "./PlacePickerMap"
 
 const fieldClass =
   "mt-1.5 w-full rounded-xl border border-app-line bg-app-bg px-3 py-2.5 text-sm text-app-text outline-none focus:border-app-primary"
@@ -58,6 +60,11 @@ export function ZoneFormModal({
     setResponsiblePhone(guardian.phone)
   }
 
+  function pickOnMap(lat: number, lng: number) {
+    setLatitude(String(lat))
+    setLongitude(String(lng))
+  }
+
   function useDeviceLocation() {
     if (!navigator.geolocation) {
       setError("Este navegador no puede leer la ubicación.")
@@ -92,8 +99,8 @@ export function ZoneFormModal({
       setError("La capacidad debe ser mayor a 0.")
       return
     }
-    if ((lat == null) !== (lng == null)) {
-      setError("Escribe latitud y longitud, o déjalas vacías.")
+    if (!phoneOk(responsiblePhone) && responsiblePhone.length > 0) {
+      setError("El teléfono debe tener 10 dígitos.")
       return
     }
     if (lat != null && (lat < -90 || lat > 90)) {
@@ -132,7 +139,7 @@ export function ZoneFormModal({
   }
 
   return (
-    <Modal title={zone ? "Editar zona de entrega" : "Nueva zona de entrega"} onClose={onClose} className="max-w-2xl">
+    <Modal title={zone ? "Editar zona de entrega" : "Nueva zona de entrega"} onClose={onClose} className="max-w-3xl">
       <form className="grid gap-4" onSubmit={submit}>
         <div className="grid gap-4 sm:grid-cols-[1fr_80px]">
           <label className="text-sm font-semibold">
@@ -141,25 +148,30 @@ export function ZoneFormModal({
           </label>
           <label className="text-sm font-semibold">
             Letra
-            <input className={fieldClass} value={letter} maxLength={1} onChange={(event) => setLetter(event.target.value.toUpperCase())} />
+            <input className={fieldClass} value={letter} maxLength={1} onChange={(event) => setLetter(onlyAlnum(event.target.value, 1))} />
           </label>
         </div>
         <label className="text-sm font-semibold">
           Ubicación
           <input className={fieldClass} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Entrada principal del colegio" />
         </label>
+        <PlacePickerMap
+          latitude={parseCoord(latitude)}
+          longitude={parseCoord(longitude)}
+          onPick={pickOnMap}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Latitud GPS
-            <input className={fieldClass} value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="19.432608" inputMode="decimal" />
+            <input className={fieldClass} value={latitude} readOnly placeholder="Toca el mapa" />
           </label>
           <label className="text-sm font-semibold">
             Longitud GPS
-            <input className={fieldClass} value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-99.133209" inputMode="decimal" />
+            <input className={fieldClass} value={longitude} readOnly placeholder="Toca el mapa" />
           </label>
         </div>
         <p className="text-xs text-app-muted">
-          Opcional. Con estas coordenadas el padre comparte distancia y tiempo reales solo mientras dura la recogida.
+          Con este punto el padre comparte distancia y minutos reales solo durante la recogida.
         </p>
         <button
           type="button"
@@ -176,7 +188,7 @@ export function ZoneFormModal({
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="text-sm font-semibold">
             Capacidad
-            <input type="number" min={1} className={fieldClass} value={capacity} onChange={(event) => setCapacity(event.target.value)} />
+            <input type="number" min={1} max={80} className={fieldClass} value={capacity} onChange={(event) => setCapacity(clampInt(event.target.value, 1, 80))} />
           </label>
           <label className="text-sm font-semibold">
             Espera (seg)
@@ -221,11 +233,11 @@ export function ZoneFormModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Nombre del responsable
-            <input className={fieldClass} value={responsibleName} onChange={(event) => setResponsibleName(event.target.value)} />
+            <input className={fieldClass} value={responsibleName} onChange={(event) => setResponsibleName(onlyName(event.target.value))} />
           </label>
           <label className="text-sm font-semibold">
             Teléfono
-            <input className={fieldClass} value={responsiblePhone} onChange={(event) => setResponsiblePhone(event.target.value)} />
+            <input className={fieldClass} value={responsiblePhone} inputMode="numeric" maxLength={10} onChange={(event) => setResponsiblePhone(onlyDigits(event.target.value, 10))} placeholder="10 dígitos" />
           </label>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">

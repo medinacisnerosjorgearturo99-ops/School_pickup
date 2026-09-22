@@ -15,6 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "SchoolPickup"
-include(":app")
-include(":tv")
 include(":server")

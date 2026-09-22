@@ -61,7 +61,9 @@ fun HomeScreen(
     activities: List<PickupActivityItem>,
     onToggleChild: (String) -> Unit,
     onPickupClick: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    pickupEnabled: Boolean = true,
+    pickupHint: String = ""
 ) {
     val dimens = LocalAppDimens.current
     val greeting = greetingForHour(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))
@@ -79,7 +81,7 @@ fun HomeScreen(
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = onPickupClick,
-                enabled = selectedCount > 0,
+                enabled = selectedCount > 0 && pickupEnabled,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -89,7 +91,15 @@ fun HomeScreen(
             ) {
                 Icon(Icons.Filled.DirectionsCar, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(pickupLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(
+                    if (!pickupEnabled && pickupHint.isNotBlank()) "AÚN NO ES HORA DE SALIDA" else pickupLabel,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+            if (pickupHint.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(pickupHint, color = RecogeYaColors.TextMuted, fontSize = 12.sp)
             }
             Spacer(Modifier.height(10.dp))
         }

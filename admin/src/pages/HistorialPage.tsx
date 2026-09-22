@@ -17,6 +17,7 @@ function eventLabel(event: string) {
   if (event === "PREPARANDO") return "Salón preparando"
   if (event === "LISTO") return "Listo para entrega"
   if (event === "LLEGADA") return "Responsable llegó"
+  if (event === "RECOGIDO") return "Alumno recogido"
   if (event === "CANCELADO") return "Cancelado"
   return event
 }
@@ -46,7 +47,7 @@ export function HistorialPage() {
           setError("")
         }
       } catch {
-        if (!cancelled) setError("No hay conexión con el servidor. En local enciende :8080; en web configura VITE_API_URL.")
+        if (!cancelled) setError("No hay conexión con el servidor.")
       }
     }
     void load()

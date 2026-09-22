@@ -1,1 +1,1 @@
-# RecogeYa parent app — keep default Android rules.
+# School Pickup parent app — keep default Android rules.

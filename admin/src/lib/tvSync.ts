@@ -51,6 +51,8 @@ export interface SchoolSyncPayload {
     zonePhone: string
     zoneLat: number | null
     zoneLng: number | null
+    dismissalTime: string
+    shift: string
   }>
   students: Array<{
     id: string
@@ -108,6 +110,8 @@ export function buildSchoolSync(school: SchoolState, cycleId: string): SchoolSyn
         zonePhone: zone?.responsiblePhone ?? "",
         zoneLat: zone?.latitude ?? null,
         zoneLng: zone?.longitude ?? null,
+        dismissalTime: group.shift === "Vespertino" ? (zone?.afternoonEnd || "15:00") : (zone?.morningEnd || "13:00"),
+        shift: group.shift,
       }
     }),
     students: school.students

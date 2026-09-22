@@ -24,7 +24,10 @@ data class PickupEntry(
     val action: String = TeacherAction.PREPARAR.name,
     val fromParentApp: Boolean = false,
     val verificationCode: String = "",
-    val zone: String = ""
+    val zone: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val collected: Boolean = false
 ) {
     val fullName: String get() = "$firstName $lastName"
 }
@@ -79,7 +82,8 @@ data class ClassroomInfo(
     val totalStudents: Int = 0,
     val screenId: String = "",
     val groupId: String = "",
-    val pairingCode: String = ""
+    val pairingCode: String = "",
+    val dismissalTime: String = ""
 )
 
 @Serializable
@@ -113,7 +117,9 @@ data class GroupDto(
     val zoneName: String,
     val zonePhone: String = "",
     val zoneLat: Double? = null,
-    val zoneLng: Double? = null
+    val zoneLng: Double? = null,
+    val dismissalTime: String = "",
+    val shift: String = ""
 )
 
 @Serializable
@@ -152,7 +158,10 @@ data class SchoolSyncRequest(
 data class DashboardState(
     val classroom: ClassroomInfo,
     val pickups: List<PickupEntry>,
-    val roster: List<RosterStudent> = emptyList()
+    val roster: List<RosterStudent> = emptyList(),
+    val pickupOpen: Boolean = true,
+    val clock: String = "",
+    val clockDate: String = ""
 )
 
 @Serializable
@@ -189,7 +198,8 @@ data class ParentChildDto(
     val zone: String = "",
     val zonePhone: String = "",
     val zoneLat: Double? = null,
-    val zoneLng: Double? = null
+    val zoneLng: Double? = null,
+    val dismissalTime: String = ""
 )
 
 @Serializable

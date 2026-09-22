@@ -1,0 +1,17 @@
+.git
+.gradle
+.idea
+.kotlin
+**/.gradle
+**/build
+app
+tv
+admin
+data
+docs
+*.db
+*.apk
+*.aab
+local.properties
+**/node_modules
+**/.DS_Store

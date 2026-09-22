@@ -52,12 +52,13 @@ export function SchoolSetupCard() {
         </label>
         <label className="text-sm font-semibold">
           Correo institucional
-          <input
+            <input
             type="email"
             className={fieldClass}
             value={adminEmail}
-            onChange={(event) => setAdminEmail(event.target.value)}
+            onChange={(event) => setAdminEmail(event.target.value.trim().slice(0, 80))}
             placeholder="direccion@escuela.edu"
+            maxLength={80}
           />
         </label>
         <div className="flex items-center gap-3 lg:col-span-3">

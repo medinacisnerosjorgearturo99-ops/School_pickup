@@ -45,6 +45,7 @@ data class Child(
     val schoolId: String,
     val zoneLat: Double? = null,
     val zoneLng: Double? = null,
+    val dismissalTime: String = "",
     val availability: ChildAvailability = ChildAvailability.ACTIVO
 ) {
     val fullName: String get() = "$firstName $lastName".trim()

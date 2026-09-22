@@ -1,1 +1,1 @@
-# RecogeYa TV panel
+# School Pickup TV panel

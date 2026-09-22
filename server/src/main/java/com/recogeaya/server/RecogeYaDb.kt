@@ -15,7 +15,15 @@ object RecogeYaDb {
     private val lock = Any()
     private var connection: Connection? = null
 
-    fun open(path: Path = Path.of("data", "recogeya.db")) {
+    fun defaultDbPath(): Path {
+        val fromEnv = System.getenv("SCHOOLPICKUP_DB") ?: System.getenv("RECOGEYA_DB")
+        if (!fromEnv.isNullOrBlank()) return Path.of(fromEnv)
+        val next = Path.of("data", "schoolpickup.db")
+        val old = Path.of("data", "recogeya.db")
+        return if (!Files.exists(next) && Files.exists(old)) old else next
+    }
+
+    fun open(path: Path = defaultDbPath()) {
         synchronized(lock) {
             Files.createDirectories(path.parent)
             val db = DriverManager.getConnection("jdbc:sqlite:${path.toAbsolutePath()}")

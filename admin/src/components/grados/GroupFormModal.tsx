@@ -95,7 +95,7 @@ export function GroupFormModal({
               className={fieldClass}
               value={letter}
               maxLength={1}
-              onChange={(event) => setLetter(event.target.value.toUpperCase())}
+              onChange={(event) => setLetter(event.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 1))}
               placeholder="A"
             />
           </label>

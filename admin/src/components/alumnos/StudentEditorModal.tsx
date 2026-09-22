@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react"
 import { Plus, Trash2, UserPlus } from "lucide-react"
 import type { GuardianDraft, StudentDraft } from "../../context/SchoolContext"
 import type { AcademicStatus, Gender, GradeGroup, Guardian, GuardianKind, Student } from "../../types/school"
+import { BLOOD_TYPES, curpOk, onlyCurp, onlyDigits, onlyName, phoneOk } from "../../lib/fields"
 import { GUARDIAN_RELATIONS, makeCurp } from "../../lib/students"
 import { MenuSelect } from "../ui/MenuSelect"
 import { Modal } from "../ui/Modal"
@@ -116,6 +117,14 @@ export function StudentEditorModal({
       setError("Crea un grupo en Grados y grupos antes de dar de alta alumnos.")
       return
     }
+    if (!curpOk(curp.trim()) && curp.trim()) {
+      setError("El CURP debe tener 18 caracteres.")
+      return
+    }
+    if (rows.some((row) => !phoneOk(onlyDigits(row.phone, 10)))) {
+      setError("El teléfono de cada responsable debe tener 10 dígitos.")
+      return
+    }
     const result = onSave(
       {
         firstName,
@@ -150,11 +159,11 @@ export function StudentEditorModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Nombre
-            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Nombre" autoFocus />
+            <input className={fieldClass} value={firstName} onChange={(event) => setFirstName(onlyName(event.target.value))} placeholder="Nombre" autoFocus maxLength={80} />
           </label>
           <label className="text-sm font-semibold">
             Apellidos
-            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Apellidos" />
+            <input className={fieldClass} value={lastName} onChange={(event) => setLastName(onlyName(event.target.value))} placeholder="Apellidos" maxLength={80} />
           </label>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -213,7 +222,7 @@ export function StudentEditorModal({
         </div>
         <label className="text-sm font-semibold">
           CURP
-          <input className={fieldClass} value={curp} onChange={(event) => setCurp(event.target.value.toUpperCase())} placeholder="CURP de 18 caracteres" />
+          <input className={fieldClass} value={curp} maxLength={18} onChange={(event) => setCurp(onlyCurp(event.target.value))} placeholder="18 caracteres" />
         </label>
         <label className="text-sm font-semibold">
           Domicilio
@@ -222,7 +231,15 @@ export function StudentEditorModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold">
             Tipo de sangre
-            <input className={fieldClass} value={bloodType} onChange={(event) => setBloodType(event.target.value)} />
+            <div className="mt-1.5">
+              <MenuSelect
+                ariaLabel="Tipo de sangre"
+                value={bloodType}
+                align="left"
+                options={[{ value: "", label: "Sin dato" }, ...BLOOD_TYPES.map((item) => ({ value: item, label: item }))]}
+                onChange={setBloodType}
+              />
+            </div>
           </label>
           <label className="text-sm font-semibold">
             Alergias
@@ -274,7 +291,7 @@ export function StudentEditorModal({
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="text-sm font-semibold">
                       Nombre
-                      <input className={fieldClass} value={row.name} onChange={(event) => patchRow(row.key, { name: event.target.value })} placeholder="Nombre completo" />
+                      <input className={fieldClass} value={row.name} onChange={(event) => patchRow(row.key, { name: onlyName(event.target.value) })} placeholder="Nombre completo" maxLength={80} />
                     </label>
                     <label className="text-sm font-semibold">
                       Parentesco
@@ -290,18 +307,26 @@ export function StudentEditorModal({
                     </label>
                     <label className="text-sm font-semibold">
                       Correo
-                      <input type="email" className={fieldClass} value={row.email} onChange={(event) => patchRow(row.key, { email: event.target.value })} placeholder="correo@escuela.edu" />
+                      <input type="email" className={fieldClass} value={row.email} onChange={(event) => patchRow(row.key, { email: event.target.value.trim().slice(0, 80) })} placeholder="correo@escuela.edu" />
                     </label>
                     <label className="text-sm font-semibold">
                       Teléfono
-                      <input className={fieldClass} value={row.phone} onChange={(event) => patchRow(row.key, { phone: event.target.value })} placeholder="55 0000 0000" />
+                      <input
+                        className={fieldClass}
+                        value={row.phone}
+                        inputMode="numeric"
+                        maxLength={10}
+                        onChange={(event) => patchRow(row.key, { phone: onlyDigits(event.target.value, 10) })}
+                        placeholder="10 dígitos"
+                      />
                     </label>
                     <label className="text-sm font-semibold">
                       Contraseña de la app
                       <input
                         className={fieldClass}
                         value={row.password ?? ""}
-                        onChange={(event) => patchRow(row.key, { password: event.target.value })}
+                        maxLength={32}
+                        onChange={(event) => patchRow(row.key, { password: event.target.value.slice(0, 32) })}
                         placeholder="Se genera al guardar"
                       />
                     </label>

@@ -6,7 +6,6 @@ import com.recogeaya.padres.data.ParentProfile
 import com.recogeaya.padres.data.ResponsibleKind
 import com.recogeaya.padres.data.ResponsiblePerson
 import com.recogeaya.padres.data.School
-import android.os.Build
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -65,6 +64,11 @@ data class RemotePickup(
 )
 
 @Serializable
+data class ApiErrorBody(
+    val error: String = ""
+)
+
+@Serializable
 data class ParentLoginRequest(
     val email: String,
     val password: String
@@ -84,7 +88,8 @@ data class ParentChildDto(
     val zone: String = "",
     val zonePhone: String = "",
     val zoneLat: Double? = null,
-    val zoneLng: Double? = null
+    val zoneLng: Double? = null,
+    val dismissalTime: String = ""
 )
 
 @Serializable
@@ -129,13 +134,13 @@ data class ParentStateDto(
 )
 
 object RecogeYaApi {
-    val BASE_URL: String = if (isEmulator()) "http://10.0.2.2:8080" else "http://10.76.67.180:8080"
+    const val BASE_URL = "https://schoolpickup-api.fly.dev"
 
     private val json = Json { ignoreUnknownKeys = true }
     private val media = "application/json; charset=utf-8".toMediaType()
     private val client = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
     fun login(email: String, password: String): ParentLoginResponse {
@@ -152,7 +157,7 @@ object RecogeYaApi {
         }
     }
 
-    fun notifyPickup(children: List<Child>, responsibleName: String, verificationCode: String) {
+    fun notifyPickup(children: List<Child>, responsibleName: String, verificationCode: String): String? {
         val body = NotifyPickupRequest(
             children = children.map {
                 ChildDto(
@@ -169,7 +174,18 @@ object RecogeYaApi {
             responsibleName = responsibleName,
             verificationCode = verificationCode
         )
-        post("/api/pickups", json.encodeToString(body))
+        val request = Request.Builder()
+            .url("$BASE_URL/api/pickups")
+            .post(json.encodeToString(body).toRequestBody(media))
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (response.isSuccessful) return null
+            val text = response.body?.string().orEmpty()
+            return runCatching { json.decodeFromString<ApiErrorBody>(text).error }
+                .getOrNull()
+                ?.ifBlank { null }
+                ?: "No se pudo avisar a la escuela."
+        }
     }
 
     fun updateLocation(
@@ -192,6 +208,10 @@ object RecogeYaApi {
 
     fun markArrived(childId: String) {
         post("/api/pickups/$childId/arrived", """{"arrived":true,"etaMinutes":0}""")
+    }
+
+    fun markCollected(childId: String) {
+        post("/api/pickups/$childId/collected", "{}")
     }
 
     fun cancel(childId: String) {
@@ -234,7 +254,8 @@ fun ParentLoginResponse.toSession(): ParentSessionData {
             classroom = dto.classroom,
             schoolId = dto.schoolId.ifBlank { "school" },
             zoneLat = dto.zoneLat,
-            zoneLng = dto.zoneLng
+            zoneLng = dto.zoneLng,
+            dismissalTime = dto.dismissalTime
         )
     }
     val people = people.map { person ->
@@ -262,18 +283,4 @@ fun ParentLoginResponse.toSession(): ParentSessionData {
         pickupZone = pickupZone,
         receptionPhone = receptionPhone
     )
-}
-
-private fun isEmulator(): Boolean {
-    val fingerprint = Build.FINGERPRINT
-    val model = Build.MODEL
-    val hardware = Build.HARDWARE
-    val product = Build.PRODUCT
-    return fingerprint.startsWith("generic") ||
-        fingerprint.contains("emulator") ||
-        model.contains("Emulator") ||
-        model.contains("Android SDK") ||
-        hardware.contains("goldfish") ||
-        hardware.contains("ranchu") ||
-        product.contains("sdk")
 }

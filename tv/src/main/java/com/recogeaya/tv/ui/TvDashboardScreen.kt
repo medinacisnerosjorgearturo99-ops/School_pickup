@@ -1,5 +1,6 @@
 package com.recogeaya.tv.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,6 +94,10 @@ fun TvDashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    var selectedPickup by remember { mutableStateOf<TvPickup?>(null) }
+    BackHandler {
+        if (!ui.pairing) viewModel.showPairing()
+    }
     if (ui.pairing) {
         PairingOverlay(
             screens = ui.screens,
@@ -103,6 +108,27 @@ fun TvDashboardScreen(
             onCode = viewModel::pairWithCode,
             modifier = modifier
         )
+        return
+    }
+    if (!ui.dashboard.pickupOpen) {
+        Column(modifier.fillMaxSize().background(TvColors.Bg).padding(20.dp)) {
+            Header(
+                school = ui.dashboard.classroom.school,
+                grade = ui.dashboard.classroom.grade,
+                teacherLine = "${ui.dashboard.classroom.teacher} • ${ui.dashboard.classroom.classroom}",
+                clock = ui.clock,
+                dateLabel = ui.dateLabel,
+                connected = ui.connected,
+                pairingCode = ui.dashboard.classroom.pairingCode,
+                onChangeClassroom = viewModel::showPairing
+            )
+            WaitingClockScreen(
+                clock = ui.clock,
+                dateLabel = ui.dateLabel,
+                dismissalTime = ui.dashboard.classroom.dismissalTime,
+                modifier = Modifier.weight(1f)
+            )
+        }
         return
     }
     val pickups = ui.dashboard.pickups
@@ -125,6 +151,7 @@ fun TvDashboardScreen(
                 grade = classroom.grade,
                 teacherLine = "${classroom.teacher} • ${classroom.classroom}",
                 clock = ui.clock,
+                dateLabel = ui.dateLabel,
                 connected = ui.connected,
                 pairingCode = classroom.pairingCode,
                 onChangeClassroom = viewModel::showPairing
@@ -136,6 +163,7 @@ fun TvDashboardScreen(
                         prepare = prepare,
                         upcoming = upcoming,
                         onAction = viewModel::setAction,
+                        onSelect = { selectedPickup = it },
                         modifier = Modifier.weight(1.7f).fillMaxHeight()
                     )
                     Sidebar(
@@ -155,7 +183,7 @@ fun TvDashboardScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    MainPanel(prepare, upcoming, viewModel::setAction, Modifier.fillMaxWidth())
+                    MainPanel(prepare, upcoming, viewModel::setAction, { selectedPickup = it }, Modifier.fillMaxWidth())
                     Sidebar(
                         total = if (roster.isNotEmpty()) roster.size else classroom.totalStudents,
                         prepareCount = prepare.size,
@@ -168,6 +196,14 @@ fun TvDashboardScreen(
                 }
             }
         }
+        selectedPickup?.let { pickup ->
+            val live = pickups.find { it.childId == pickup.childId } ?: pickup
+            ParentLocationDialog(
+                pickup = live,
+                onAction = viewModel::setAction,
+                onDismiss = { selectedPickup = null }
+            )
+        }
     }
 }
 
@@ -177,6 +213,7 @@ private fun Header(
     grade: String,
     teacherLine: String,
     clock: String,
+    dateLabel: String,
     connected: Boolean,
     pairingCode: String,
     onChangeClassroom: () -> Unit
@@ -198,7 +235,7 @@ private fun Header(
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(school, color = TvColors.Text, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                Text("PANEL DE SALIDA • RECOGEYA", color = TvColors.Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text("PANEL DE SALIDA • SCHOOL PICKUP", color = TvColors.Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
@@ -212,6 +249,9 @@ private fun Header(
                 .clickable(onClick = onChangeClassroom)
         ) {
             Text(clock, color = TvColors.Text, fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+            if (dateLabel.isNotBlank()) {
+                Text(dateLabel, color = TvColors.Muted, fontSize = 12.sp)
+            }
             Text(
                 if (connected) "● EN TIEMPO REAL" else "● SIN CONEXIÓN",
                 color = if (connected) TvColors.Green else TvColors.Orange,
@@ -228,6 +268,7 @@ private fun MainPanel(
     prepare: List<TvPickup>,
     upcoming: List<TvPickup>,
     onAction: (String, String) -> Unit,
+    onSelect: (TvPickup) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -247,12 +288,12 @@ private fun MainPanel(
         }
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             prepare.forEach { student ->
-                PrepareRow(student, onAction)
+                PrepareRow(student, onAction, onSelect)
             }
             Spacer(Modifier.height(18.dp))
             SectionLabel(Icons.Filled.AccessTime, "Próximos")
             upcoming.forEachIndexed { index, student ->
-                UpcomingRow(number = index + 1, student = student, onAction = onAction)
+                UpcomingRow(number = index + 1, student = student, onAction = onAction, onSelect = onSelect)
             }
             if (upcoming.isEmpty()) {
                 Text("No hay más alumnos en camino.", color = TvColors.Muted, fontSize = 13.sp)
@@ -275,10 +316,11 @@ private fun RowScope.HeaderCell(text: String, weight: Float) {
 }
 
 @Composable
-private fun PrepareRow(student: TvPickup, onAction: (String, String) -> Unit) {
+private fun PrepareRow(student: TvPickup, onAction: (String, String) -> Unit, onSelect: (TvPickup) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onSelect(student) }
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -311,27 +353,28 @@ private fun PrepareRow(student: TvPickup, onAction: (String, String) -> Unit) {
         }
         Box(modifier = Modifier.weight(0.8f), contentAlignment = Alignment.CenterStart) {
             when (student.action) {
-                "LISTO" -> InfoPill("LISTA", TvColors.GreenSoft, TvColors.Green)
+                "LISTO" -> InfoPill("PREPARADO", TvColors.GreenSoft, TvColors.Green)
                 "PREPARANDO" -> Button(
                     onClick = { onAction(student.childId, "LISTO") },
                     colors = ButtonDefaults.buttonColors(containerColor = TvColors.Green, contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Listo", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                ) { Text("Preparado", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 else -> Button(
                     onClick = { onAction(student.childId, "PREPARANDO") },
                     colors = ButtonDefaults.buttonColors(containerColor = TvColors.Blue, contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Preparar", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                ) { Text("Preparando", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
             }
         }
     }
 }
 
 @Composable
-private fun UpcomingRow(number: Int, student: TvPickup, onAction: (String, String) -> Unit) {
+private fun UpcomingRow(number: Int, student: TvPickup, onAction: (String, String) -> Unit, onSelect: (TvPickup) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onSelect(student) }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -358,7 +401,7 @@ private fun UpcomingRow(number: Int, student: TvPickup, onAction: (String, Strin
             onClick = { onAction(student.childId, "PREPARANDO") },
             colors = ButtonDefaults.buttonColors(containerColor = TvColors.Blue, contentColor = Color.White),
             shape = RoundedCornerShape(12.dp)
-        ) { Text("Preparar", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+        ) { Text("Preparando", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
     }
 }
 
@@ -587,7 +630,7 @@ private fun PairingOverlay(
                     Text("Elegir salón", color = TvColors.Text, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
                     Text(
                         when {
-                            !connected && screens.isEmpty() -> "Sin conexión. Enciende el servidor en :8080 y sincroniza Dirección."
+                            !connected && screens.isEmpty() -> "Sin conexión con el servidor. Sincroniza el padrón en Dirección y revisa internet de la TV."
                             screens.isEmpty() -> "Escribe el código de Dirección o espera a que aparezcan los salones."
                             else -> "Usa el código de la pantalla o elige el grupo de esta TV."
                         },

@@ -178,7 +178,7 @@ fun PickupStepper(
     val steps = listOf(
         PickupStep.AVISADO to "Avisado",
         PickupStep.PREPARANDO to "Preparando",
-        PickupStep.LISTO to "Listo"
+        PickupStep.LISTO to "Preparado"
     )
     val currentIndex = steps.indexOfFirst { it.first == current }
 

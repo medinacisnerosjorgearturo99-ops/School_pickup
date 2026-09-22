@@ -15,7 +15,7 @@ export const EMPTY_CYCLE: SchoolCycle = {
 
 export const schoolSeed: SchoolState = {
   schoolName: "Tu escuela",
-  productName: "RecogeYa",
+  productName: "School Pickup",
   adminName: "Administrador",
   adminEmail: "",
   cycles: [],

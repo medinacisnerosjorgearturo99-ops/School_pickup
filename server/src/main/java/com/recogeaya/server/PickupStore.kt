@@ -14,16 +14,20 @@ object PickupStore {
         val classroom = SchoolRoster.classroomFor(screen)
         val roster = SchoolRoster.rosterFor(classroom.groupId)
         val rosterIds = roster.map { it.id }.toSet()
-        val rows = mutex.withLock { pickups.values.toList() }
+        val rows = mutex.withLock { pickups.values.filterNot { it.collected }.toList() }
         val visible = if (rosterIds.isNotEmpty()) {
             rows.filter { it.childId in rosterIds }
         } else {
             emptyList()
         }
+        val open = PickupWindow.isOpen(classroom.dismissalTime)
         return DashboardState(
             classroom = classroom.copy(totalStudents = roster.size),
-            pickups = visible,
-            roster = roster
+            pickups = if (open) visible else emptyList(),
+            roster = roster,
+            pickupOpen = open,
+            clock = PickupWindow.clock(),
+            clockDate = PickupWindow.dateLabel()
         )
     }
 
@@ -114,8 +118,7 @@ object PickupStore {
         val current = pickups[childId] ?: return@withLock null
         pickups[childId] = current.copy(
             arrived = arrived,
-            etaMinutes = etaMinutes,
-            action = if (arrived) TeacherAction.LISTO.name else current.action
+            etaMinutes = etaMinutes
         )
         pushHistory(
             childName = current.fullName,
@@ -126,6 +129,18 @@ object PickupStore {
         )
         persistLocked()
         pickups[childId]
+    }
+
+    suspend fun collect(childId: String) = mutex.withLock {
+        val current = pickups.remove(childId) ?: return@withLock
+        pushHistory(
+            childName = current.fullName,
+            groupLabel = listOf(current.grade, current.group).filter { it.isNotBlank() }.joinToString(" • "),
+            zone = current.zone,
+            responsibleName = current.responsibleName,
+            event = "RECOGIDO"
+        )
+        persistLocked()
     }
 
     suspend fun cancel(childId: String) = mutex.withLock {
@@ -150,7 +165,15 @@ object PickupStore {
         mutex.withLock {
             request.childIds.forEach { id ->
                 val current = pickups[id] ?: return@forEach
-                if (current.arrived) return@forEach
+                if (current.collected) return@forEach
+                if (current.arrived) {
+                    pickups[id] = current.copy(
+                        latitude = request.latitude,
+                        longitude = request.longitude,
+                        etaMinutes = 0
+                    )
+                    return@forEach
+                }
                 val dest = destinations[id]
                 val eta = if (dest != null) {
                     val meters = Geo.distanceMeters(
@@ -163,7 +186,11 @@ object PickupStore {
                 } else {
                     request.etaMinutes ?: current.etaMinutes
                 }
-                pickups[id] = current.copy(etaMinutes = eta)
+                pickups[id] = current.copy(
+                    etaMinutes = eta,
+                    latitude = request.latitude,
+                    longitude = request.longitude
+                )
             }
             persistLocked()
         }
