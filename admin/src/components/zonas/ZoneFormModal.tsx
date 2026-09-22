@@ -46,8 +46,6 @@ export function ZoneFormModal({
   const [responsibleName, setResponsibleName] = useState(zone?.responsibleName ?? "")
   const [responsiblePhone, setResponsiblePhone] = useState(zone?.responsiblePhone ?? "")
   const [color, setColor] = useState(zone?.color ?? "blue")
-  const [mapX, setMapX] = useState(String(zone?.mapX ?? 50))
-  const [mapY, setMapY] = useState(String(zone?.mapY ?? 50))
   const [latitude, setLatitude] = useState(zone?.latitude != null ? String(zone.latitude) : "")
   const [longitude, setLongitude] = useState(zone?.longitude != null ? String(zone.longitude) : "")
   const [locating, setLocating] = useState(false)
@@ -60,9 +58,10 @@ export function ZoneFormModal({
     setResponsiblePhone(guardian.phone)
   }
 
-  function pickOnMap(lat: number, lng: number) {
+  function pickOnMap(lat: number, lng: number, label?: string) {
     setLatitude(String(lat))
     setLongitude(String(lng))
+    if (label && !location.trim()) setLocation(label)
   }
 
   function useDeviceLocation() {
@@ -91,8 +90,6 @@ export function ZoneFormModal({
     const cap = Number(capacity)
     const wait = Number(avgWaitSec)
     const usage = Number(usagePct)
-    const x = Number(mapX)
-    const y = Number(mapY)
     const lat = parseCoord(latitude)
     const lng = parseCoord(longitude)
     if (!Number.isFinite(cap) || cap < 1) {
@@ -127,8 +124,8 @@ export function ZoneFormModal({
         afternoonEnd,
         responsibleName,
         responsiblePhone,
-        mapX: Number.isFinite(x) ? x : 50,
-        mapY: Number.isFinite(y) ? y : 50,
+        mapX: zone?.mapX ?? 50,
+        mapY: zone?.mapY ?? 50,
         color,
         latitude: lat,
         longitude: lng,
@@ -171,7 +168,7 @@ export function ZoneFormModal({
           </label>
         </div>
         <p className="text-xs text-app-muted">
-          Con este punto el padre comparte distancia y minutos reales solo durante la recogida.
+          Busca la dirección o toca el mapa. Ese punto es el que verán padres y TV durante la recogida.
         </p>
         <button
           type="button"
@@ -240,7 +237,7 @@ export function ZoneFormModal({
             <input className={fieldClass} value={responsiblePhone} inputMode="numeric" maxLength={10} onChange={(event) => setResponsiblePhone(onlyDigits(event.target.value, 10))} placeholder="10 dígitos" />
           </label>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-1">
           <label className="text-sm font-semibold">
             Estado
             <div className="mt-1.5">
@@ -255,14 +252,6 @@ export function ZoneFormModal({
                 onChange={setStatus}
               />
             </div>
-          </label>
-          <label className="text-sm font-semibold">
-            Mapa X %
-            <input type="number" min={4} max={96} className={fieldClass} value={mapX} onChange={(event) => setMapX(event.target.value)} />
-          </label>
-          <label className="text-sm font-semibold">
-            Mapa Y %
-            <input type="number" min={4} max={96} className={fieldClass} value={mapY} onChange={(event) => setMapY(event.target.value)} />
           </label>
         </div>
         <fieldset>

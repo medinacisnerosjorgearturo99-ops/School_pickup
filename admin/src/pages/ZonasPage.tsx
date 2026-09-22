@@ -40,9 +40,6 @@ import { Modal } from "../components/ui/Modal"
 import { ThemeToggle } from "../components/ui/ThemeToggle"
 
 const PAGE_SIZE = 8
-const ZOOM_MIN = 0.9
-const ZOOM_MAX = 1.45
-const ZOOM_STEP = 0.15
 
 type StatusFilter = "todos" | AcademicStatus
 type DemandFilter = "todos" | ZoneDemand
@@ -68,7 +65,6 @@ export function ZonasPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [zoneId, setZoneId] = useState<string | null>(null)
-  const [zoom, setZoom] = useState(1)
   const [formZone, setFormZone] = useState<DeliveryZone | null | undefined>(undefined)
   const [assignOpen, setAssignOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -357,15 +353,7 @@ export function ZonasPage() {
             </button>
           </div>
           <div className="mt-4 min-h-0 flex-1">
-            <CampusMap
-              zones={zones}
-              selectedId={selected.id}
-              zoom={zoom}
-              onSelect={setZoneId}
-              onZoomIn={() => setZoom((value) => Math.min(ZOOM_MAX, Number((value + ZOOM_STEP).toFixed(2))))}
-              onZoomOut={() => setZoom((value) => Math.max(ZOOM_MIN, Number((value - ZOOM_STEP).toFixed(2))))}
-              compact
-            />
+            <CampusMap zones={zones} selectedId={selected.id} onSelect={setZoneId} compact />
           </div>
           <div className="mt-4">
             <p className="text-xs font-bold tracking-wide text-app-muted uppercase">Nivel de uso</p>
@@ -504,14 +492,7 @@ export function ZonasPage() {
 
       {fullMapOpen ? (
         <Modal title="Mapa de zonas de entrega" onClose={() => setFullMapOpen(false)} className="max-w-4xl">
-          <CampusMap
-            zones={zones}
-            selectedId={selected.id}
-            zoom={zoom}
-            onSelect={setZoneId}
-            onZoomIn={() => setZoom((value) => Math.min(ZOOM_MAX, Number((value + ZOOM_STEP).toFixed(2))))}
-            onZoomOut={() => setZoom((value) => Math.max(ZOOM_MIN, Number((value - ZOOM_STEP).toFixed(2))))}
-          />
+          <CampusMap zones={zones} selectedId={selected.id} onSelect={setZoneId} />
           <div className="mt-4 flex flex-wrap gap-4 text-xs font-semibold">
             <LegendDot className="bg-app-green" label="Alta (70-100%)" />
             <LegendDot className="bg-app-orange" label="Media (30-69%)" />
@@ -558,6 +539,8 @@ function toDraft(zone: DeliveryZone, overrides: Partial<ZoneDraft> = {}): ZoneDr
     mapX: zone.mapX,
     mapY: zone.mapY,
     color: zone.color,
+    latitude: zone.latitude ?? null,
+    longitude: zone.longitude ?? null,
     ...overrides,
   }
 }

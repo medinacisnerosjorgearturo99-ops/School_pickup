@@ -1,48 +1,6 @@
-import { useEffect, useRef } from "react"
-
-const LEAFLET_JS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-const DEFAULT_CENTER: [number, number] = [19.432608, -99.133209]
-
-type LeafletNs = {
-  map: (el: HTMLElement, opts: { zoomControl: boolean }) => LeafletMap
-  tileLayer: (url: string, opts: { attribution: string; maxZoom: number }) => { addTo: (map: LeafletMap) => void }
-  marker: (latlng: [number, number]) => LeafletMarker
-}
-
-type LeafletMap = {
-  setView: (latlng: [number, number], zoom: number) => LeafletMap
-  on: (event: string, handler: (e: { latlng: { lat: number; lng: number } }) => void) => void
-  remove: () => void
-  invalidateSize: () => void
-}
-
-type LeafletMarker = {
-  addTo: (map: LeafletMap) => LeafletMarker
-  setLatLng: (latlng: [number, number]) => void
-}
-
-declare global {
-  interface Window {
-    L?: LeafletNs
-  }
-}
-
-function loadLeaflet(): Promise<LeafletNs> {
-  if (window.L) return Promise.resolve(window.L)
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${LEAFLET_JS}"]`)
-    if (existing) {
-      existing.addEventListener("load", () => (window.L ? resolve(window.L) : reject(new Error("Leaflet"))))
-      return
-    }
-    const script = document.createElement("script")
-    script.src = LEAFLET_JS
-    script.async = true
-    script.onload = () => (window.L ? resolve(window.L) : reject(new Error("Leaflet")))
-    script.onerror = () => reject(new Error("No se pudo cargar el mapa."))
-    document.head.appendChild(script)
-  })
-}
+import { useEffect, useRef, useState } from "react"
+import { Search } from "lucide-react"
+import { DEFAULT_CENTER, loadLeaflet, pickPinIcon, searchPlaces, type LeafletMap, type LeafletMarker, type LeafletNs, type PlaceHit } from "../../lib/leaflet"
 
 export function PlacePickerMap({
   latitude,
@@ -51,7 +9,7 @@ export function PlacePickerMap({
 }: {
   latitude: number | null
   longitude: number | null
-  onPick: (lat: number, lng: number) => void
+  onPick: (lat: number, lng: number, label?: string) => void
 }) {
   const host = useRef<HTMLDivElement>(null)
   const mapRef = useRef<LeafletMap | null>(null)
@@ -59,6 +17,11 @@ export function PlacePickerMap({
   const leafletRef = useRef<LeafletNs | null>(null)
   const onPickRef = useRef(onPick)
   const coordsRef = useRef({ latitude, longitude })
+  const [mapReady, setMapReady] = useState(false)
+  const [query, setQuery] = useState("")
+  const [hits, setHits] = useState<PlaceHit[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState("")
   onPickRef.current = onPick
   coordsRef.current = { latitude, longitude }
 
@@ -81,37 +44,104 @@ export function PlacePickerMap({
       const start = coordsRef.current
       if (start.latitude != null && start.longitude != null) {
         const point: [number, number] = [start.latitude, start.longitude]
-        markerRef.current = L.marker(point).addTo(map)
+        markerRef.current = L.marker(point, { icon: pickPinIcon(L) }).addTo(map)
         map.setView(point, 16)
       }
       window.setTimeout(() => map.invalidateSize(), 120)
+      setMapReady(true)
     })
     return () => {
       cancelled = true
       mapRef.current?.remove()
       mapRef.current = null
       markerRef.current = null
+      setMapReady(false)
     }
   }, [])
 
   useEffect(() => {
     const map = mapRef.current
     const L = leafletRef.current
-    if (!map || !L || latitude == null || longitude == null) return
+    if (!mapReady || !map || !L || latitude == null || longitude == null) return
     const point: [number, number] = [latitude, longitude]
     if (!markerRef.current) {
-      markerRef.current = L.marker(point).addTo(map)
+      markerRef.current = L.marker(point, { icon: pickPinIcon(L) }).addTo(map)
     } else {
       markerRef.current.setLatLng(point)
     }
     map.setView(point, 16)
-  }, [latitude, longitude])
+  }, [latitude, longitude, mapReady])
+
+  async function runSearch() {
+    setSearchError("")
+    setSearching(true)
+    try {
+      const next = await searchPlaces(query)
+      setHits(next)
+      if (next.length === 0) setSearchError("No se encontraron direcciones. Prueba con otra búsqueda.")
+    } catch {
+      setHits([])
+      setSearchError("No se pudo buscar. Revisa tu conexión.")
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  function chooseHit(hit: PlaceHit) {
+    setHits([])
+    setQuery(hit.label)
+    onPick(Number(hit.lat.toFixed(6)), Number(hit.lng.toFixed(6)), hit.label)
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-app-line">
+      <div className="space-y-2 border-b border-app-line bg-app-bg p-3">
+        <label className="relative block">
+          <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-app-muted" />
+          <input
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setSearchError("")
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault()
+                void runSearch()
+              }
+            }}
+            placeholder="Buscar dirección, colonia o escuela…"
+            className="w-full rounded-xl border border-app-line bg-app-card py-2.5 pr-24 pl-9 text-sm outline-none focus:border-app-primary"
+          />
+          <button
+            type="button"
+            onClick={() => void runSearch()}
+            disabled={searching || query.trim().length < 3}
+            className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-lg bg-app-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-app-primary-hover disabled:opacity-50"
+          >
+            {searching ? "…" : "Buscar"}
+          </button>
+        </label>
+        {searchError ? <p className="text-xs font-medium text-app-danger">{searchError}</p> : null}
+        {hits.length > 0 ? (
+          <ul className="max-h-36 overflow-y-auto rounded-xl border border-app-line bg-app-card">
+            {hits.map((hit) => (
+              <li key={`${hit.lat}-${hit.lng}-${hit.label}`}>
+                <button
+                  type="button"
+                  onClick={() => chooseHit(hit)}
+                  className="w-full border-b border-app-line px-3 py-2 text-left text-xs last:border-b-0 hover:bg-app-card-hover"
+                >
+                  {hit.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
       <div ref={host} className="h-64 w-full bg-app-bg" />
       <p className="px-3 py-2 text-xs text-app-muted">
-        Toca el mapa para marcar el punto de salida. Puedes acercar y moverte como en Maps.
+        Busca una dirección o toca el mapa para marcar el punto de salida.
       </p>
     </div>
   )
