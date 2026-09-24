@@ -27,6 +27,8 @@ data class PickupEntry(
     val zone: String = "",
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val destLatitude: Double? = null,
+    val destLongitude: Double? = null,
     val collected: Boolean = false
 ) {
     val fullName: String get() = "$firstName $lastName"
@@ -83,7 +85,9 @@ data class ClassroomInfo(
     val screenId: String = "",
     val groupId: String = "",
     val pairingCode: String = "",
-    val dismissalTime: String = ""
+    val dismissalTime: String = "",
+    val zoneLat: Double? = null,
+    val zoneLng: Double? = null
 )
 
 @Serializable

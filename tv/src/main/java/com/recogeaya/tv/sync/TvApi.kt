@@ -23,7 +23,9 @@ data class TvPickup(
     val fromParentApp: Boolean = false,
     val verificationCode: String = "",
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val destLatitude: Double? = null,
+    val destLongitude: Double? = null
 ) {
     val fullName: String get() = "$firstName $lastName".trim()
     val gradeGroup: String
@@ -41,7 +43,9 @@ data class TvClassroom(
     val screenId: String = "",
     val groupId: String = "",
     val pairingCode: String = "",
-    val dismissalTime: String = ""
+    val dismissalTime: String = "",
+    val zoneLat: Double? = null,
+    val zoneLng: Double? = null
 )
 
 @Serializable
@@ -136,6 +140,7 @@ fun TvPickup.isPrepareNow(): Boolean =
 fun TvPickup.arrivalLabel(): String = when {
     arrived || etaMinutes == 0 -> "HA LLEGADO"
     etaMinutes != null -> "A $etaMinutes MIN"
+    hasLocation() -> "EN VIVO"
     else -> "EN CAMINO"
 }
 

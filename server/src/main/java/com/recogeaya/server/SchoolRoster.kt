@@ -81,7 +81,9 @@ object SchoolRoster {
             screenId = screen?.id.orEmpty(),
             groupId = group?.id.orEmpty(),
             pairingCode = screen?.pairingCode.orEmpty(),
-            dismissalTime = group?.dismissalTime.orEmpty()
+            dismissalTime = group?.dismissalTime.orEmpty(),
+            zoneLat = group?.zoneLat,
+            zoneLng = group?.zoneLng
         )
     }
 

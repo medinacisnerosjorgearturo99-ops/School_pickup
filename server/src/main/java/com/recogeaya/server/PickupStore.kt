@@ -61,7 +61,11 @@ object PickupStore {
                     action = existing?.action ?: TeacherAction.PREPARAR.name,
                     fromParentApp = true,
                     verificationCode = request.verificationCode,
-                    zone = zone
+                    zone = zone,
+                    latitude = existing?.latitude,
+                    longitude = existing?.longitude,
+                    destLatitude = existing?.destLatitude,
+                    destLongitude = existing?.destLongitude
                 )
                 pushHistory(
                     childName = "${child.firstName} ${child.lastName}".trim(),
@@ -166,15 +170,17 @@ object PickupStore {
             request.childIds.forEach { id ->
                 val current = pickups[id] ?: return@forEach
                 if (current.collected) return@forEach
+                val dest = destinations[id]
                 if (current.arrived) {
                     pickups[id] = current.copy(
                         latitude = request.latitude,
                         longitude = request.longitude,
+                        destLatitude = dest?.first ?: current.destLatitude,
+                        destLongitude = dest?.second ?: current.destLongitude,
                         etaMinutes = 0
                     )
                     return@forEach
                 }
-                val dest = destinations[id]
                 val eta = if (dest != null) {
                     val meters = Geo.distanceMeters(
                         request.latitude,
@@ -189,7 +195,9 @@ object PickupStore {
                 pickups[id] = current.copy(
                     etaMinutes = eta,
                     latitude = request.latitude,
-                    longitude = request.longitude
+                    longitude = request.longitude,
+                    destLatitude = dest?.first ?: current.destLatitude,
+                    destLongitude = dest?.second ?: current.destLongitude
                 )
             }
             persistLocked()

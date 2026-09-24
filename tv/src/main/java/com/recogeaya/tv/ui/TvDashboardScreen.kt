@@ -66,6 +66,7 @@ import com.recogeaya.tv.sync.TvRosterStudent
 import com.recogeaya.tv.sync.TvScreenOption
 import com.recogeaya.tv.sync.arrivalLabel
 import com.recogeaya.tv.sync.hasArrived
+import com.recogeaya.tv.sync.hasLocation
 import com.recogeaya.tv.sync.isPrepareNow
 
 object TvColors {
@@ -200,6 +201,8 @@ fun TvDashboardScreen(
             val live = pickups.find { it.childId == pickup.childId } ?: pickup
             ParentLocationDialog(
                 pickup = live,
+                zoneLat = classroom.zoneLat,
+                zoneLng = classroom.zoneLng,
                 onAction = viewModel::setAction,
                 onDismiss = { selectedPickup = null }
             )
@@ -342,6 +345,9 @@ private fun PrepareRow(student: TvPickup, onAction: (String, String) -> Unit, on
             Column {
                 Text(student.fullName, color = TvColors.Text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(student.gradeGroup, color = TvColors.Muted, fontSize = 12.sp)
+                if (student.hasLocation()) {
+                    Text("GPS en vivo · toca para ver mapa", color = TvColors.Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
                 if (student.verificationCode.isNotBlank()) {
                     Text("Código ${student.verificationCode}", color = TvColors.Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
@@ -391,6 +397,9 @@ private fun UpcomingRow(number: Int, student: TvPickup, onAction: (String, Strin
         Column(modifier = Modifier.weight(1f)) {
             Text(student.fullName, color = TvColors.Text, fontWeight = FontWeight.Bold)
             Text("Responsable: ${student.responsibleName}", color = TvColors.Muted, fontSize = 12.sp)
+            if (student.hasLocation()) {
+                Text("GPS en vivo · toca para ver mapa", color = TvColors.Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
             if (student.verificationCode.isNotBlank()) {
                 Text("Código ${student.verificationCode}", color = TvColors.Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
@@ -569,10 +578,19 @@ private fun InfoPill(text: String, background: Color, foreground: Color) {
 @Composable
 private fun ArrivalPill(student: TvPickup) {
     val arrived = student.hasArrived()
+    val live = !arrived && student.hasLocation()
     InfoPill(
         text = student.arrivalLabel(),
-        background = if (arrived) TvColors.GreenSoft else TvColors.OrangeSoft,
-        foreground = if (arrived) TvColors.Green else TvColors.Orange
+        background = when {
+            arrived -> TvColors.GreenSoft
+            live -> TvColors.BlueSoft
+            else -> TvColors.OrangeSoft
+        },
+        foreground = when {
+            arrived -> TvColors.Green
+            live -> TvColors.Blue
+            else -> TvColors.Orange
+        }
     )
 }
 
